@@ -485,8 +485,12 @@
   }
   function mediaSmallHTML(ex) {
     if (ex.media) {
+      // Miniaturas aparecem em listas (dia, biblioteca) com vários exercícios de uma vez.
+      // Sem autoplay/loop aqui: reproduzir vários vídeos remotos ao mesmo tempo trava o
+      // navegador no celular. preload="metadata" ainda mostra o primeiro quadro na maioria
+      // dos navegadores, sem transmitir o vídeo inteiro.
       return ex.mediaType === "video"
-        ? `<video class="thumb-media" src="${escapeAttr(ex.media)}" muted loop autoplay playsinline></video>`
+        ? `<video class="thumb-media" src="${escapeAttr(ex.media)}" muted playsinline preload="metadata"></video>`
         : `<img class="thumb-media" src="${escapeAttr(ex.media)}" alt="">`;
     }
     return `${escapeHtml(thumbLabel(ex.name))}<br>GIF`;

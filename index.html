@@ -62,8 +62,10 @@
   .app {
     max-width: 1080px;
     margin: 0 auto;
-    padding-inline: 16px;
-    padding-block: 18px 48px;
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
+    padding-top: calc(18px + env(safe-area-inset-top));
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
   }
 
   .topbar {

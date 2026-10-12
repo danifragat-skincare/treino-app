@@ -1157,6 +1157,7 @@
           <div class="edit-tabs">
             <button class="tab-btn ${editTab === "day" ? "active" : ""}" onclick="switchEditTab('day')">Treino do dia</button>
             <button class="tab-btn ${editTab === "library" ? "active" : ""}" onclick="switchEditTab('library')">Biblioteca</button>
+            <button class="tab-btn ${editTab === "data" ? "active" : ""}" onclick="switchEditTab('data')">Dados</button>
           </div>
           <button class="done-edit-btn" id="doneEditBtn">Concluído</button>
         </div>
@@ -1170,7 +1171,91 @@
   function renderEditBody() {
     const body = document.getElementById("editBody");
     if (!body) return;
-    body.innerHTML = editTab === "day" ? dayEditorHTML() : libraryHTML();
+    body.innerHTML = editTab === "day" ? dayEditorHTML() : editTab === "library" ? libraryHTML() : dataTabHTML();
+  }
+
+  // ----- Dados (exportar/importar) -----
+
+  function dataTabHTML() {
+    const exCount = store.exercises.length;
+    const bioCount = (store.bio || []).length;
+    return `
+      <div class="ex-form">
+        <h3>Exportar dados</h3>
+        <p class="hint">Gera um arquivo com tudo que está salvo neste aparelho: treinos, exercícios (${exCount}), histórico de cargas e bioimpedância (${bioCount} registros). Envie esse arquivo para o outro aparelho (WhatsApp, e-mail etc.) e importe lá.</p>
+        <div class="form-actions">
+          <button class="btn-small primary" onclick="exportData()">Exportar dados (.json)</button>
+        </div>
+      </div>
+      <div class="ex-form">
+        <h3>Importar dados</h3>
+        <p class="hint">Selecione um arquivo exportado por este app. Isso substitui todos os treinos, exercícios e histórico salvos neste aparelho pelos dados do arquivo.</p>
+        <div class="form-actions">
+          <label class="btn-small" for="importFileInput" style="cursor:pointer;">Escolher arquivo</label>
+          <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="handleImportFile(this)">
+        </div>
+      </div>
+    `;
+  }
+
+  async function exportData() {
+    const payload = { app: "treino-app", version: 1, exportedAt: new Date().toISOString(), store };
+    const json = JSON.stringify(payload, null, 2);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `treino-dados-${stamp}.json`;
+
+    // Dentro do artifact Claude: usa a capacidade de downloads do viewer.
+    try {
+      if (window.claude && typeof window.claude.use === "function") {
+        const downloads = await window.claude.use("downloads");
+        if (downloads) {
+          await downloads.save({ filename, data: json });
+          return;
+        }
+      }
+    } catch (e) { /* sem permissão ou indisponível: tenta o modo padrão abaixo */ }
+
+    // Fora do artifact (ex: site publicado no GitHub Pages): download comum do navegador.
+    try {
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      alert("Não foi possível exportar o arquivo neste navegador.");
+    }
+  }
+
+  function handleImportFile(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try { parsed = JSON.parse(String(reader.result)); } catch (e) { parsed = null; }
+      const incoming = parsed && parsed.store ? parsed.store : parsed;
+      if (!incoming || !Array.isArray(incoming.exercises) || !Array.isArray(incoming.week)) {
+        alert("Arquivo inválido. Selecione um arquivo de dados exportado por este app.");
+        input.value = "";
+        return;
+      }
+      const ok = confirm("Importar este arquivo vai substituir TODOS os treinos, exercícios e histórico salvos neste aparelho. Essa ação não pode ser desfeita. Deseja continuar?");
+      input.value = "";
+      if (!ok) return;
+      store.exercises = incoming.exercises;
+      store.week = incoming.week;
+      store.bio = Array.isArray(incoming.bio) ? incoming.bio : [];
+      saveStore();
+      alert("Dados importados com sucesso!");
+      closeEdit();
+    };
+    reader.onerror = () => { alert("Não foi possível ler o arquivo selecionado."); input.value = ""; };
+    reader.readAsText(file);
   }
 
   // ----- Treino do dia -----

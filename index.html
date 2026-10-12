@@ -207,6 +207,22 @@
     font-size: 1.1rem; cursor: pointer;
   }
 
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(10, 9, 7, 0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    padding: 20px; max-width: 420px; width: 100%;
+    display: flex; flex-direction: column; gap: 10px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+  .modal-card h3 { margin: 0; font-size: 1.1rem; }
+  .modal-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+  .modal-actions .hint { margin: 0 0 6px; }
+  .modal-actions .btn-small { width: 100%; }
+
   .ex-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .ex-title-row h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 2.1rem); line-height: 1.05; }
   .ex-title-row .target { font-size: 0.82rem; color: var(--muted); }
@@ -1189,7 +1205,7 @@
       </div>
       <div class="ex-form">
         <h3>Importar dados</h3>
-        <p class="hint">Selecione um arquivo exportado por este app. Isso substitui todos os treinos, exercícios e histórico salvos neste aparelho pelos dados do arquivo.</p>
+        <p class="hint">Selecione um arquivo exportado por este app. Depois você escolhe se quer <strong>mesclar</strong> (mantém o que já está salvo aqui, como histórico de cargas e bioimpedância) ou <strong>substituir tudo</strong> pelo conteúdo do arquivo.</p>
         <div class="form-actions">
           <label class="btn-small" for="importFileInput" style="cursor:pointer;">Escolher arquivo</label>
           <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="handleImportFile(this)">
@@ -1244,18 +1260,109 @@
         input.value = "";
         return;
       }
-      const ok = confirm("Importar este arquivo vai substituir TODOS os treinos, exercícios e histórico salvos neste aparelho. Essa ação não pode ser desfeita. Deseja continuar?");
       input.value = "";
-      if (!ok) return;
-      store.exercises = incoming.exercises;
-      store.week = incoming.week;
-      store.bio = Array.isArray(incoming.bio) ? incoming.bio : [];
-      saveStore();
-      alert("Dados importados com sucesso!");
-      closeEdit();
+      openImportChoiceModal(incoming);
     };
     reader.onerror = () => { alert("Não foi possível ler o arquivo selecionado."); input.value = ""; };
     reader.readAsText(file);
+  }
+
+  function importModalKeyHandler(e) { if (e.key === "Escape") closeImportChoiceModal(); }
+
+  function closeImportChoiceModal() {
+    const el = document.getElementById("importModalBackdrop");
+    if (el) el.remove();
+    document.removeEventListener("keydown", importModalKeyHandler);
+  }
+
+  function openImportChoiceModal(incoming) {
+    closeImportChoiceModal();
+    const exCount = incoming.exercises.length;
+    const bioCount = Array.isArray(incoming.bio) ? incoming.bio.length : 0;
+    const el = document.createElement("div");
+    el.className = "modal-backdrop";
+    el.id = "importModalBackdrop";
+    el.innerHTML = `
+      <div class="modal-card">
+        <h3>Como importar este arquivo?</h3>
+        <p class="hint">O arquivo tem ${exCount} exercícios e ${bioCount} registros de bioimpedância.</p>
+        <div class="modal-actions">
+          <button class="btn-small primary" id="importMergeBtn">Mesclar dados (recomendado)</button>
+          <p class="hint">Mantém o histórico de cargas e bioimpedância já salvos neste aparelho, e atualiza/acrescenta treinos e exercícios do arquivo.</p>
+          <button class="btn-small" id="importReplaceBtn">Substituir tudo</button>
+          <p class="hint">Apaga tudo que está salvo neste aparelho e usa só o que está no arquivo. Essa ação não pode ser desfeita.</p>
+          <button class="link-btn" id="importCancelBtn">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+    el.addEventListener("click", (e) => { if (e.target === el) closeImportChoiceModal(); });
+    document.getElementById("importMergeBtn").addEventListener("click", () => {
+      closeImportChoiceModal();
+      applyImportedStore(incoming, "merge");
+    });
+    document.getElementById("importReplaceBtn").addEventListener("click", () => {
+      closeImportChoiceModal();
+      const ok = confirm("Substituir tudo vai apagar TODOS os treinos, exercícios e histórico salvos neste aparelho, usando só o que está no arquivo importado. Essa ação não pode ser desfeita. Deseja continuar?");
+      if (ok) applyImportedStore(incoming, "replace");
+    });
+    document.getElementById("importCancelBtn").addEventListener("click", closeImportChoiceModal);
+    document.addEventListener("keydown", importModalKeyHandler);
+  }
+
+  function mergeHistory(localHist, incomingHist) {
+    const map = new Map();
+    (Array.isArray(localHist) ? localHist : []).forEach(h => { if (h && h.date) map.set(h.date, h); });
+    (Array.isArray(incomingHist) ? incomingHist : []).forEach(h => { if (h && h.date) map.set(h.date, h); });
+    return Array.from(map.values()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  }
+
+  function mergeStores(localStore, incoming) {
+    const localById = {};
+    (localStore.exercises || []).forEach(ex => { localById[ex.id] = ex; });
+
+    const mergedExercises = [];
+    const seenIds = new Set();
+
+    incoming.exercises.forEach(inEx => {
+      const localEx = localById[inEx.id];
+      const merged = Object.assign({}, inEx);
+      const mergedHist = mergeHistory(localEx && localEx.history, inEx.history);
+      merged.history = mergedHist;
+      if (mergedHist.length) merged.weight = mergedHist[mergedHist.length - 1].weight;
+      else if (localEx && localEx.weight != null) merged.weight = localEx.weight;
+      mergedExercises.push(merged);
+      seenIds.add(inEx.id);
+    });
+    // Exercícios que só existem neste aparelho (ex: criados direto no celular) são mantidos.
+    (localStore.exercises || []).forEach(localEx => {
+      if (!seenIds.has(localEx.id)) mergedExercises.push(localEx);
+    });
+
+    const bioMap = new Map();
+    (localStore.bio || []).forEach(b => { if (b && b.date) bioMap.set(b.date, b); });
+    (incoming.bio || []).forEach(b => { if (b && b.date) bioMap.set(b.date, b); });
+    const mergedBio = Array.from(bioMap.values()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+    return {
+      exercises: mergedExercises,
+      week: incoming.week, // estrutura dos dias/treinos vem do arquivo (edição estrutural)
+      bio: mergedBio,
+    };
+  }
+
+  function applyImportedStore(incoming, mode) {
+    const result = mode === "merge" ? mergeStores(store, incoming) : {
+      exercises: incoming.exercises,
+      week: incoming.week,
+      bio: Array.isArray(incoming.bio) ? incoming.bio : [],
+    };
+    store.exercises = result.exercises;
+    store.week = result.week;
+    store.bio = result.bio;
+    saveStore();
+    alert(mode === "merge" ? "Dados mesclados com sucesso!" : "Dados importados com sucesso!");
+    closeEdit();
   }
 
   // ----- Treino do dia -----

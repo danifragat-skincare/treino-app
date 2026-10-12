@@ -465,8 +465,21 @@
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* sem storage disponível */ }
   }
 
+  // Garante que todo dia da semana seja sempre um objeto válido (nunca null/undefined).
+  // Um arquivo importado pode trazer null em dias livres (significa "não mexer" na
+  // mesclagem) — mas se for usado com "Substituir tudo", esse null precisa virar um
+  // dia de descanso de verdade, senão a tela trava ao tentar abrir esse dia.
+  function normalizeWeek(week) {
+    const days = Array.isArray(week) ? week.slice(0, 7) : [];
+    while (days.length < 7) days.push(null);
+    return days.map(day => (day && typeof day === "object")
+      ? { kind: day.kind || "descanso", focus: day.focus || "Descanso", exerciseIds: Array.isArray(day.exerciseIds) ? day.exerciseIds : [] }
+      : { kind: "descanso", focus: "Descanso", exerciseIds: [] });
+  }
+
   const store = loadStore();
   if (!store.bio) store.bio = [];
+  store.week = normalizeWeek(store.week);
 
   function getEx(id) { return store.exercises.find(e => e.id === id); }
   function isCardio(ex) { return ex.group === "Cardio"; }
@@ -1378,7 +1391,7 @@
       bio: Array.isArray(incoming.bio) ? incoming.bio : [],
     };
     store.exercises = result.exercises;
-    store.week = result.week;
+    store.week = normalizeWeek(result.week);
     store.bio = result.bio;
     saveStore();
     alert(mode === "merge" ? "Dados mesclados com sucesso!" : "Dados importados com sucesso!");

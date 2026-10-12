@@ -165,8 +165,8 @@
 
   /* ---------- Build note ---------- */
 
-  .build-note { margin-top: 28px; font-size: 0.78rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; line-height: 1.5; }
-  .build-note b { color: var(--fg); }
+  .tip-note { margin-top: 28px; font-size: 0.78rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; line-height: 1.5; }
+  .tip-note b { color: var(--fg); }
 
   /* ---------- Session (execução) ---------- */
 
@@ -606,7 +606,7 @@
           <span class="badge descanso">Descanso</span>
         </div>
         <div class="rest-card"><div class="display">Dia livre</div>Aproveite para recuperar, ou edite este dia pra adicionar um treino.</div>
-        <p class="build-note"><b>Etapa 4 — histórico de carga.</b> Falta só o polimento final da Etapa 5.</p>
+        <p class="tip-note"><b>Dica:</b> toda vez que você concluir um treino, o peso usado em cada exercício fica registrado — clique no 📈 pra ver a evolução.</p>
       `;
       return;
     }
@@ -638,10 +638,9 @@
         ? `<div class="exercise-list">${rows}</div><button class="start-btn" id="startBtn">Iniciar treino</button>`
         : `<div class="rest-card"><div class="display">Sem exercícios ainda</div>Clique em "Editar treinos" pra montar este dia.</div>`
       }
-      <p class="build-note">
-        <b>Etapa 4 — histórico de carga.</b> Toda vez que você concluir um treino, o
+      <p class="tip-note">
+        <b>Dica:</b> toda vez que você concluir um treino, o
         peso usado em cada exercício fica registrado — clique no 📈 pra ver a evolução.
-        Falta só o polimento final da Etapa 5.
       </p>
     `;
     const startBtn = document.getElementById("startBtn");

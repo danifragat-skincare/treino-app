@@ -1353,9 +1353,16 @@
     (incoming.bio || []).forEach(b => { if (b && b.date) bioMap.set(b.date, b); });
     const mergedBio = Array.from(bioMap.values()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
+    // Semana: dia a dia. Um dia com null/undefined no arquivo mantém o que já estava
+    // neste aparelho; só os dias presentes no arquivo são substituídos.
+    const mergedWeek = (localStore.week || []).map((localDay, i) => {
+      const incomingDay = Array.isArray(incoming.week) ? incoming.week[i] : undefined;
+      return (incomingDay === undefined || incomingDay === null) ? localDay : incomingDay;
+    });
+
     return {
       exercises: mergedExercises,
-      week: incoming.week, // estrutura dos dias/treinos vem do arquivo (edição estrutural)
+      week: mergedWeek,
       bio: mergedBio,
     };
   }

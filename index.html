@@ -333,22 +333,27 @@
     });
   }
 
+  function goToWorkout() {
+    section = "treino";
+    document.getElementById("bioToggle").classList.remove("active");
+    document.getElementById("dataToggle").classList.remove("active");
+    renderWorkout();
+  }
+
   document.getElementById("bioToggle").addEventListener("click", () => {
-    const bioBtn = document.getElementById("bioToggle");
-    if (section === "bio") {
-      section = "treino";
-      bioBtn.classList.remove("active");
-      renderWorkout();
-    } else {
-      section = "bio";
-      bioFormOpen = false;
-      bioBtn.classList.add("active");
-      renderBioView();
-    }
+    if (section === "bio") { goToWorkout(); return; }
+    section = "bio";
+    bioFormOpen = false;
+    document.getElementById("bioToggle").classList.add("active");
+    document.getElementById("dataToggle").classList.remove("active");
+    renderBioView();
   });
 
   document.getElementById("dataToggle").addEventListener("click", () => {
-    if (section !== "treino") { section = "treino"; document.getElementById("bioToggle").classList.remove("active"); }
+    if (section === "dados") { goToWorkout(); return; }
+    section = "dados";
+    document.getElementById("bioToggle").classList.remove("active");
+    document.getElementById("dataToggle").classList.add("active");
     renderDataView();
   });
 
@@ -701,6 +706,7 @@
 
     viewEl.innerHTML = `
       <div class="history-wrap">
+        <button type="button" class="link-btn" onclick="goToWorkout()" style="align-self:flex-start">← Voltar pro treino</button>
         <div class="workout-head">
           <div><h1>Bioimpedância</h1><div class="meta">${entries.length} registro${entries.length !== 1 ? "s" : ""}</div></div>
         </div>
@@ -746,6 +752,7 @@
     const bioCount = store.bio.length;
     viewEl.innerHTML = `
       <div class="history-wrap">
+        <button type="button" class="link-btn" onclick="goToWorkout()" style="align-self:flex-start">← Voltar pro treino</button>
         <div class="workout-head"><div><h1>Dados</h1><div class="meta">Backup e sincronização entre aparelhos</div></div></div>
         <div class="ex-form">
           <h3>Exportar dados</h3>
@@ -860,9 +867,7 @@
     }
     saveStore();
     alert(mode === "merge" ? "Dados mesclados com sucesso!" : "Dados importados com sucesso!");
-    section = "treino";
-    document.getElementById("bioToggle").classList.remove("active");
-    renderWorkout();
+    goToWorkout();
   }
 
   // ---------- Início ----------

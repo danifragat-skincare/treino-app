@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Treino Semanal</title>
+
 <meta name="theme-color" content="#1c1a17">
-<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-32.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -17,10 +18,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /*
-    Conceito de layout: app de treino "de academia" — barra de dias fixa no topo,
-    lista de exercícios em cards, tela de execução com mídia em destaque e
-    temporizador, e um modo de edição (treino do dia + biblioteca de exercícios)
-    pensado pro computador mas funcional no celular.
+    App de acompanhamento de treino + bioimpedância (v2 — simplificada).
+    O planejamento de exercícios/séries/cargas agora fica no app da personal.
+    Aqui a gente só registra: em que dia foi à academia, qual grupo muscular
+    ou aeróbico fez, e a evolução de peso/medidas.
   */
   :root {
     --bg: #1c1a17;
@@ -60,7 +61,7 @@
   /* ---------- Shell ---------- */
 
   .app {
-    max-width: 1080px;
+    max-width: 920px;
     margin: 0 auto;
     padding-left: calc(16px + env(safe-area-inset-left));
     padding-right: calc(16px + env(safe-area-inset-right));
@@ -74,6 +75,7 @@
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 18px;
+    flex-wrap: wrap;
   }
 
   .topbar .wordmark { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.04em; color: var(--fg); }
@@ -90,129 +92,113 @@
     cursor: pointer;
   }
   .edit-link:hover { color: var(--fg); border-color: var(--muted); }
+  .edit-link.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
-  /* ---------- Day rail ---------- */
+  /* ---------- Week nav ---------- */
+
+  .week-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .week-nav .week-label { font-size: 0.82rem; color: var(--muted); text-align: center; flex: 1; }
+  .week-nav button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-size: 0.95rem; cursor: pointer; flex: 0 0 auto; }
+  .week-nav button:disabled { opacity: 0.35; cursor: default; }
 
   .day-rail { display: flex; gap: 8px; overflow-x: auto; padding-block: 4px 6px; margin-bottom: 20px; scrollbar-width: none; }
   .day-rail::-webkit-scrollbar { display: none; }
 
   .day-pill {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 46px;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
-    width: 64px; padding-block: 10px 8px;
+    padding-block: 10px 8px;
     border-radius: 14px; border: 1px solid var(--line);
     background: var(--surface); color: var(--muted); cursor: pointer;
   }
-  .day-pill .dow { font-family: "Barlow Condensed", sans-serif; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.04em; color: inherit; }
+  .day-pill .dow { font-family: "Barlow Condensed", sans-serif; font-size: 0.86rem; font-weight: 700; letter-spacing: 0.03em; color: inherit; }
+  .day-pill .dnum { font-size: 0.64rem; color: inherit; opacity: 0.85; }
   .day-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
   .day-pill[data-kind="forca"] .dot { background: var(--accent); }
   .day-pill[data-kind="cardio"] .dot { background: var(--cardio); }
+  .day-pill[data-future="true"] { opacity: 0.4; cursor: default; }
   .day-pill[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .day-pill[aria-selected="true"] .dot { background: var(--accent-ink); }
   .day-pill[data-kind="cardio"][aria-selected="true"] { background: var(--cardio); border-color: var(--cardio); color: var(--cardio-ink); }
   .day-pill[data-kind="cardio"][aria-selected="true"] .dot { background: var(--cardio-ink); }
 
-  /* ---------- Workout header ---------- */
+  /* ---------- Stats row ---------- */
 
-  .workout-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
-  .workout-head h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); margin: 0 0 2px; line-height: 1; }
+  .stats-row { display: flex; gap: 10px; margin-bottom: 18px; }
+  .stats-row > div { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; }
+  .stat-num { font-family: "Barlow Condensed", sans-serif; font-size: 1.5rem; font-weight: 700; }
+  .stat-lbl { font-size: 0.66rem; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; }
+
+  /* ---------- Day panel ---------- */
+
+  .workout-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  .workout-head h1 { font-size: clamp(1.5rem, 5vw, 2rem); margin: 0 0 2px; line-height: 1; }
   .workout-head .meta { font-size: 0.85rem; color: var(--muted); }
-  .workout-head .badge {
+  .badge {
     font-family: "Barlow Condensed", sans-serif; font-size: 0.78rem; font-weight: 600;
     letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; border: 1px solid currentColor;
   }
-  .workout-head .badge.forca { color: var(--accent); }
-  .workout-head .badge.cardio { color: var(--cardio); }
-  .workout-head .badge.descanso { color: var(--muted); }
+  .badge.forca { color: var(--accent); }
+  .badge.cardio { color: var(--cardio); }
+  .badge.descanso { color: var(--muted); }
 
-  .start-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: var(--accent); color: var(--accent-ink); border: none; border-radius: 12px;
-    padding: 13px 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  .rest-card { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 30px 20px; text-align: center; color: var(--muted); }
+  .rest-card .display { color: var(--fg); font-size: 1.2rem; margin-bottom: 6px; }
+
+  .checkin-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--fg);
+    border-radius: 999px; padding: 8px 14px; font-size: 0.84rem; cursor: pointer; user-select: none;
   }
-  .start-btn:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
-
-  /* ---------- Exercise list ---------- */
-
-  .exercise-list { display: flex; flex-direction: column; gap: 10px; }
-  .exercise { display: grid; grid-template-columns: 56px 1fr auto auto; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
-  .hist-btn { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font-size: 0.9rem; cursor: pointer; flex-shrink: 0; }
-  .exercise .thumb {
-    width: 56px; height: 56px; border-radius: 10px; background: var(--surface-2);
-    display: flex; align-items: center; justify-content: center; color: var(--muted);
-    font-size: 0.6rem; text-align: center; line-height: 1.15; letter-spacing: 0.03em;
-    text-transform: uppercase; flex-shrink: 0; overflow: hidden; position: relative;
+  .chip.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .chip.cardio-chip.selected { background: var(--cardio); border-color: var(--cardio); color: var(--cardio-ink); }
+  .form-row { display: flex; flex-direction: column; gap: 5px; }
+  .form-row label { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .form-row input[type="text"], .form-row input[type="number"], .form-row input[type="date"], textarea {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; color: var(--fg);
+    padding: 10px 12px; font-size: 0.9rem; font-family: inherit; width: 100%;
   }
-  .thumb-media { width: 100%; height: 100%; object-fit: cover; }
-  .exercise .info { min-width: 0; }
-  .exercise .name { font-weight: 600; font-size: 0.98rem; margin: 0 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .exercise .sub { font-size: 0.8rem; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
-  .exercise .sub b { color: var(--fg); font-variant-numeric: tabular-nums; }
-  .exercise .weight { text-align: right; font-family: "Barlow Condensed", sans-serif; }
-  .exercise .weight .kg { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .exercise .weight .lbl { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  textarea { resize: vertical; min-height: 56px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  .btn-small { border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); border-radius: 10px; padding: 9px 14px; font-size: 0.84rem; cursor: pointer; font-weight: 600; }
+  .btn-small.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-small.danger { color: var(--danger); border-color: var(--danger); }
+  .link-btn { background: none; border: none; color: var(--accent); font-size: 0.82rem; cursor: pointer; padding: 0; text-decoration: underline; }
+  .hint { font-size: 0.74rem; color: var(--muted); line-height: 1.4; }
 
-  /* ---------- Rest day / empty states ---------- */
+  .checkin-view { display: flex; flex-direction: column; gap: 8px; }
+  .checkin-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag-pill { font-size: 0.76rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg); background: var(--surface-2); }
+  .checkin-note { font-size: 0.86rem; color: var(--fg); background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+  .checkin-meta-row { font-size: 0.78rem; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
 
-  .rest-card { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 36px 20px; text-align: center; color: var(--muted); }
-  .rest-card .display { color: var(--fg); font-size: 1.3rem; margin-bottom: 6px; }
+  /* ---------- Histórico de check-ins ---------- */
 
-  /* ---------- Toast ---------- */
+  .section-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin: 22px 0 10px; }
+  .hist-list { display: flex; flex-direction: column; gap: 8px; }
+  .hist-row { display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .hist-row .hist-date { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 0.95rem; }
+  .hist-row .hist-date small { display: block; font-size: 0.62rem; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .hist-row .hist-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .hist-row button { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 0.8rem; }
 
-  .toast { background: var(--surface); border: 1px solid var(--accent); border-radius: 14px; padding: 13px 16px; margin-bottom: 16px; font-size: 0.86rem; display: flex; align-items: center; gap: 10px; }
-  .toast b { color: var(--accent); }
+  /* ---------- Bioimpedância ---------- */
 
-  /* ---------- Build note ---------- */
+  .history-wrap { display: flex; flex-direction: column; gap: 16px; }
+  .hist-chart { width: 100%; height: auto; display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  .bio-metric-select { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; color: var(--fg); padding: 8px 10px; font-size: 0.84rem; font-family: inherit; }
+  .bio-hist-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 0.84rem; }
+  .bio-hist-row .bio-val { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bio-hist-row button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface-2); color: var(--danger); cursor: pointer; font-size: 0.8rem; }
+  .ex-form { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+  .ex-form h3 { margin: 0; font-size: 1.1rem; }
+  .add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-  .tip-note { margin-top: 28px; font-size: 0.78rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; line-height: 1.5; }
-  .tip-note b { color: var(--fg); }
-
-  /* ---------- Session (execução) ---------- */
-
-  .session-wrap { display: flex; flex-direction: column; gap: 16px; }
-  .session-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .exit-btn { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 10px; padding: 8px 12px; font-size: 0.78rem; cursor: pointer; }
-  .stopwatch { font-family: "Barlow Condensed", sans-serif; font-variant-numeric: tabular-nums; font-size: 1.05rem; font-weight: 700; color: var(--fg); display: flex; align-items: center; gap: 7px; }
-  .stopwatch .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.4s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.25 } }
-  @media (prefers-reduced-motion: reduce) { .stopwatch .pulse { animation: none; } }
-
-  .progress-dots { display: flex; gap: 6px; justify-content: center; }
-  .progress-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
-  .progress-dots span.done { background: var(--accent); }
-  .progress-dots span.current { background: var(--fg); }
-
-  .media-box {
-    aspect-ratio: 16 / 10; width: 100%; max-width: 100%; border-radius: 16px;
-    background: var(--surface); border: 1px solid var(--line);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: var(--muted); gap: 4px; overflow: hidden; position: relative;
-  }
-  .media-box .media-fill { width: 100%; height: 100%; object-fit: cover; }
-  .media-box .big-label { font-family: "Barlow Condensed", sans-serif; font-size: clamp(2rem, 8vw, 2.6rem); font-weight: 700; color: var(--surface-2); letter-spacing: 0.04em; }
-  .media-box .cap { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; }
-  .media-box.zoomable { cursor: pointer; }
-  .media-box .zoom-hint {
-    position: absolute; bottom: 10px; right: 10px;
-    background: rgba(10, 9, 7, 0.6); color: #fff; font-size: 0.7rem; font-weight: 600;
-    padding: 6px 11px; border-radius: 999px; display: flex; align-items: center; gap: 4px; pointer-events: none;
-  }
-
-  .lightbox-backdrop {
-    position: fixed; inset: 0; background: rgba(10, 9, 7, 0.94);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 100; padding: 24px;
-  }
-  .lightbox-backdrop img, .lightbox-backdrop video {
-    max-width: 100%; max-height: 100%; border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  }
-  .lightbox-close {
-    position: absolute; top: 18px; right: 18px;
-    width: 42px; height: 42px; border-radius: 50%;
-    background: var(--surface); border: 1px solid var(--line); color: var(--fg);
-    font-size: 1.1rem; cursor: pointer;
-  }
+  /* ---------- Modal (import) ---------- */
 
   .modal-backdrop {
     position: fixed; inset: 0; background: rgba(10, 9, 7, 0.75);
@@ -230,139 +216,24 @@
   .modal-actions .hint { margin: 0 0 6px; }
   .modal-actions .btn-small { width: 100%; }
 
-  .ex-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .ex-title-row h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 2.1rem); line-height: 1.05; }
-  .ex-title-row .target { font-size: 0.82rem; color: var(--muted); }
-
-  .sets-table { display: flex; flex-direction: column; gap: 8px; }
-  .set-row { display: grid; grid-template-columns: 22px 1fr 1fr auto; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
-  .set-row.done { border-color: var(--accent); background: linear-gradient(0deg, rgba(232, 84, 44, 0.08), rgba(232, 84, 44, 0.08)), var(--surface); }
-  .set-row .set-num { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 1rem; color: var(--muted); }
-  .set-row.done .set-num { color: var(--accent); }
-
-  .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .field label { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
-  .field .stepper { display: flex; align-items: center; gap: 4px; }
-  .field .stepper button { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); font-size: 0.95rem; line-height: 1; cursor: pointer; flex: 0 0 auto; }
-  .field input { width: 100%; min-width: 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; color: var(--fg); padding: 5px 4px; font-size: 0.86rem; font-variant-numeric: tabular-nums; text-align: center; }
-
-  .set-row .done-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font-size: 1rem; cursor: pointer; flex-shrink: 0; }
-  .set-row.done .done-btn { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-
-  .rest-block { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
-  .rest-ring { width: 60px; height: 60px; border-radius: 50%; flex: 0 0 auto; background: conic-gradient(var(--accent) calc(var(--pct, 0) * 1%), var(--surface-2) 0); display: flex; align-items: center; justify-content: center; }
-  .rest-ring .inner { width: 50px; height: 50px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
-  .rest-info { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 180px; }
-  .rest-label { font-size: 0.78rem; color: var(--muted); }
-  .rest-label b { color: var(--fg); display: block; font-size: 0.82rem; }
-  .rest-actions { display: flex; gap: 8px; }
-  .rest-actions button { border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); border-radius: 10px; padding: 8px 13px; font-size: 0.8rem; cursor: pointer; }
-
-  .cardio-block { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  .cardio-block .cap { font-size: 0.76rem; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
-  .cardio-block .big-time { font-family: "Barlow Condensed", sans-serif; font-size: 2.6rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--cardio); }
-  .cardio-actions { display: flex; gap: 10px; }
-  .cardio-actions button { border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); border-radius: 10px; padding: 9px 18px; font-size: 0.85rem; cursor: pointer; }
-  .cardio-actions button.primary { background: var(--cardio); border-color: var(--cardio); color: var(--cardio-ink); }
-
-  .session-nav { display: flex; gap: 10px; }
-  .session-nav button { flex: 1; border-radius: 12px; padding: 14px; font-size: 0.92rem; font-weight: 600; cursor: pointer; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); }
-  .session-nav button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .session-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  /* ---------- Histórico de progressão ---------- */
-
-  .history-wrap { display: flex; flex-direction: column; gap: 16px; }
-  .hist-stats { display: flex; gap: 10px; }
-  .hist-stats > div { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
-  .hist-stat-num { font-family: "Barlow Condensed", sans-serif; font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .hist-stat-num small { font-size: 0.72rem; font-weight: 600; color: var(--muted); margin-left: 2px; }
-  .hist-stat-lbl { font-size: 0.64rem; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
-  .hist-chart { width: 100%; height: auto; display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
-  .hist-list { display: flex; flex-direction: column; gap: 6px; }
-  .hist-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 0.84rem; }
-  .hist-row .hist-weight { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .hist-row button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface-2); color: var(--danger); cursor: pointer; font-size: 0.8rem; }
-
-  /* ---------- Edit mode ---------- */
-
-  .edit-wrap { display: flex; flex-direction: column; gap: 18px; }
-  .edit-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .edit-tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
-  .tab-btn { border: none; background: none; color: var(--muted); padding: 8px 14px; border-radius: 9px; font-size: 0.84rem; font-weight: 600; cursor: pointer; }
-  .tab-btn.active { background: var(--accent); color: var(--accent-ink); }
-  .done-edit-btn { border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); border-radius: 10px; padding: 9px 16px; font-size: 0.84rem; cursor: pointer; font-weight: 600; }
-
-  .day-config { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
-  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-  .form-row { display: flex; flex-direction: column; gap: 5px; }
-  .form-row label { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
-  .form-row select, .form-row input[type="text"], .form-row input[type="number"], .form-row input[type="url"] {
-    background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; color: var(--fg);
-    padding: 10px 12px; font-size: 0.9rem; font-family: inherit; width: 100%;
-  }
-
-  .section-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin: 4px 0 2px; }
-
-  .assigned-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-  .assigned-row { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
-  .thumb-sm { width: 40px; height: 40px; border-radius: 8px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 0.5rem; color: var(--muted); overflow: hidden; position: relative; text-align: center; line-height: 1.1; flex-shrink: 0; }
-  .ex-name { font-weight: 600; font-size: 0.9rem; }
-  .ex-sub { font-size: 0.76rem; color: var(--muted); }
-  .row-actions { display: flex; gap: 6px; }
-  .row-actions button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 0.85rem; }
-  .row-actions button:disabled { opacity: 0.3; cursor: not-allowed; }
-  .row-actions button.remove { color: var(--danger); border-color: var(--danger); }
-
-  .add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .add-row select { flex: 1; min-width: 160px; }
-  .btn-small { border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); border-radius: 10px; padding: 9px 14px; font-size: 0.84rem; cursor: pointer; font-weight: 600; }
-  .btn-small.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .link-btn { background: none; border: none; color: var(--accent); font-size: 0.82rem; cursor: pointer; padding: 0; text-decoration: underline; }
-
-  .lib-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-  .lib-row { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
-  .lib-row .thumb-sm { width: 48px; height: 48px; }
-  .lib-group-tag { font-size: 0.64rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
-  .confirm-row { display: flex; gap: 6px; align-items: center; }
-  .confirm-row span { font-size: 0.76rem; color: var(--danger); white-space: nowrap; }
-
-  .ex-form { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
-  .ex-form h3 { margin: 0; font-size: 1.1rem; }
-  .ex-form .form-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
-  .media-preview { width: 100%; max-width: 220px; aspect-ratio: 16 / 10; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.72rem; overflow: hidden; text-align: center; padding: 8px; }
-  .media-preview img, .media-preview video { width: 100%; height: 100%; object-fit: cover; }
-  .hint { font-size: 0.74rem; color: var(--muted); line-height: 1.4; }
-
   /* ---------- Desktop ---------- */
 
   @media (min-width: 760px) {
-    .app { display: grid; grid-template-columns: 180px 1fr; column-gap: 32px; padding-block: 28px 56px; }
-    .topbar { grid-column: 1 / -1; }
-    .day-rail { flex-direction: column; overflow-x: visible; position: sticky; top: 28px; align-self: start; margin-bottom: 0; }
-    .day-pill { width: auto; flex-direction: row; justify-content: flex-start; gap: 10px; padding: 11px 14px; }
-    .day-pill .dow { display: none; }
-    .day-pill .dow-full { display: inline; font-family: "Barlow Condensed", sans-serif; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.02em; color: inherit; }
-    .media-box { aspect-ratio: 20 / 9; }
-    .session-wrap { max-width: 620px; }
+    .app { padding-block: 28px 56px; }
   }
-
-  @media (max-width: 759px) { .dow-full { display: none; } }
 </style>
+
+
 </head>
 <body>
-
-
 <div class="app">
   <div class="topbar">
     <div class="wordmark">TREINO<span>.</span></div>
     <div class="top-actions">
       <button class="edit-link" id="bioToggle">Bioimpedância</button>
-      <button class="edit-link" id="editToggle">Editar treinos</button>
+      <button class="edit-link" id="dataToggle">Dados</button>
     </div>
   </div>
-
-  <nav class="day-rail" id="dayRail" aria-label="Dias da semana"></nav>
 
   <main id="workoutView"></main>
 </div>
@@ -372,8 +243,7 @@
     { dow: "SEG", full: "Segunda" }, { dow: "TER", full: "Terça" }, { dow: "QUA", full: "Quarta" },
     { dow: "QUI", full: "Quinta" }, { dow: "SEX", full: "Sexta" }, { dow: "SÁB", full: "Sábado" }, { dow: "DOM", full: "Domingo" },
   ];
-  const KIND_LABEL = { forca: "Musculação", cardio: "Aeróbico", descanso: "Descanso" };
-  const GROUPS = ["Peito", "Costas", "Ombro", "Bíceps", "Tríceps", "Pernas", "Abdômen", "Cardio", "Outro"];
+  const GROUPS = ["Peito", "Costas", "Ombro", "Bíceps", "Tríceps", "Pernas", "Glúteos", "Abdômen", "Cardio", "Outro"];
   const BIO_METRICS = [
     { key: "weight", label: "Peso", unit: "kg" },
     { key: "fatPct", label: "Gordura corporal", unit: "%" },
@@ -383,8 +253,13 @@
     { key: "boneKg", label: "Massa óssea", unit: "kg" },
     { key: "bmr", label: "Taxa metabólica basal", unit: "kcal" },
     { key: "bmi", label: "IMC", unit: "" },
+    { key: "armCm", label: "Braço", unit: "cm" },
+    { key: "waistCm", label: "Cintura", unit: "cm" },
+    { key: "abdomenCm", label: "Abdômen", unit: "cm" },
+    { key: "hipCm", label: "Quadril", unit: "cm" },
+    { key: "thighCm", label: "Coxa", unit: "cm" },
+    { key: "calfCm", label: "Panturrilha", unit: "cm" },
   ];
-  const REST_DURATION = 60;
   const STORE_KEY = "treino-app-v1";
 
   function escapeHtml(s) {
@@ -392,609 +267,317 @@
   }
   function escapeAttr(s) { return String(s).replace(/"/g, "&quot;"); }
 
-  // ---------- Dados de exemplo (seed) — só usados na primeira vez, sem dado salvo ----------
-
-  function buildSeed() {
-    const raw = [
-      { kind: "forca", focus: "Peito e Tríceps", exercises: [
-        { name: "Supino reto com barra", group: "Peito", sets: 4, reps: "8–10", weight: 60 },
-        { name: "Supino inclinado halteres", group: "Peito", sets: 3, reps: "10–12", weight: 24 },
-        { name: "Crucifixo na polia", group: "Peito", sets: 3, reps: "12–15", weight: 18 },
-        { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "12–15", weight: 25 },
-        { name: "Tríceps testa", group: "Tríceps", sets: 3, reps: "10–12", weight: 20 },
-      ]},
-      { kind: "cardio", focus: "Aeróbico — Esteira", exercises: [
-        { name: "Caminhada inclinada", group: "Cardio", sets: 1, reps: "30 min", weight: null },
-        { name: "Tiros de corrida", group: "Cardio", sets: 6, reps: "1 min", weight: null },
-      ]},
-      { kind: "forca", focus: "Costas e Bíceps", exercises: [
-        { name: "Puxada frente", group: "Costas", sets: 4, reps: "8–10", weight: 55 },
-        { name: "Remada curvada", group: "Costas", sets: 4, reps: "10", weight: 40 },
-        { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", weight: 22 },
-        { name: "Rosca direta barra", group: "Bíceps", sets: 3, reps: "10–12", weight: 20 },
-        { name: "Rosca alternada", group: "Bíceps", sets: 3, reps: "12", weight: 10 },
-      ]},
-      { kind: "forca", focus: "Pernas", exercises: [
-        { name: "Agachamento livre", group: "Pernas", sets: 4, reps: "8–10", weight: 70 },
-        { name: "Leg press 45°", group: "Pernas", sets: 4, reps: "10–12", weight: 140 },
-        { name: "Cadeira extensora", group: "Pernas", sets: 3, reps: "12–15", weight: 35 },
-        { name: "Mesa flexora", group: "Pernas", sets: 3, reps: "12–15", weight: 28 },
-        { name: "Panturrilha em pé", group: "Pernas", sets: 4, reps: "15", weight: 50 },
-      ]},
-      { kind: "forca", focus: "Ombro e Abdômen", exercises: [
-        { name: "Desenvolvimento halteres", group: "Ombro", sets: 4, reps: "8–10", weight: 16 },
-        { name: "Elevação lateral", group: "Ombro", sets: 3, reps: "12–15", weight: 8 },
-        { name: "Elevação frontal", group: "Ombro", sets: 3, reps: "12", weight: 8 },
-        { name: "Abdominal na polia", group: "Abdômen", sets: 3, reps: "15", weight: 30 },
-      ]},
-      { kind: "cardio", focus: "Aeróbico livre", exercises: [
-        { name: "Bike ou corrida leve", group: "Cardio", sets: 1, reps: "40 min", weight: null },
-      ]},
-      { kind: "descanso", focus: "Descanso", exercises: [] },
-    ];
-    const exercises = [];
-    const week = raw.map((day, di) => {
-      const exerciseIds = day.exercises.map((ex, ei) => {
-        const id = DOW_META[di].dow.toLowerCase() + "-" + ei;
-        exercises.push({
-          id, name: ex.name, group: ex.group, sets: ex.sets, reps: ex.reps, weight: ex.weight,
-          rest: ex.group === "Cardio" ? null : REST_DURATION, media: "", mediaType: "image", history: [],
-        });
-        return id;
-      });
-      return { kind: day.kind, focus: day.focus, exerciseIds };
-    });
-    return { exercises, week };
+  function pad2(n) { return String(n).padStart(2, "0"); }
+  function toISODate(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function todayISO() { return toISODate(new Date()); }
+  function parseISODate(s) {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+  // Segunda-feira da semana de "d" (um objeto Date)
+  function mondayOf(d) {
+    const dow = d.getDay(); // 0=domingo..6=sábado
+    const diff = dow === 0 ? -6 : 1 - dow;
+    const m = new Date(d);
+    m.setDate(d.getDate() + diff);
+    m.setHours(0, 0, 0, 0);
+    return m;
   }
 
   function loadStore() {
+    let data = null;
     try {
       const raw = localStorage.getItem(STORE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) { /* segue pro seed */ }
-    const seeded = buildSeed();
-    try {
-      const oldWeights = JSON.parse(localStorage.getItem("treino-app-weights-v1") || "{}");
-      seeded.exercises.forEach(ex => { if (oldWeights[ex.id] != null) ex.weight = oldWeights[ex.id]; });
-      localStorage.removeItem("treino-app-weights-v1");
-    } catch (e) { /* sem dado antigo */ }
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(seeded)); } catch (e) { /* sem storage disponível */ }
-    return seeded;
+      if (raw) data = JSON.parse(raw);
+    } catch (e) { /* segue vazio */ }
+    if (!data || typeof data !== "object") data = {};
+    if (!Array.isArray(data.checkins)) data.checkins = [];
+    if (!Array.isArray(data.bio)) data.bio = [];
+    return data;
   }
   function saveStore() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* sem storage disponível */ }
   }
 
-  // Garante que todo dia da semana seja sempre um objeto válido (nunca null/undefined).
-  // Um arquivo importado pode trazer null em dias livres (significa "não mexer" na
-  // mesclagem) — mas se for usado com "Substituir tudo", esse null precisa virar um
-  // dia de descanso de verdade, senão a tela trava ao tentar abrir esse dia.
-  function normalizeWeek(week) {
-    const days = Array.isArray(week) ? week.slice(0, 7) : [];
-    while (days.length < 7) days.push(null);
-    return days.map(day => (day && typeof day === "object")
-      ? { kind: day.kind || "descanso", focus: day.focus || "Descanso", exerciseIds: Array.isArray(day.exerciseIds) ? day.exerciseIds : [] }
-      : { kind: "descanso", focus: "Descanso", exerciseIds: [] });
-  }
-
   const store = loadStore();
-  if (!store.bio) store.bio = [];
-  store.week = normalizeWeek(store.week);
 
-  function getEx(id) { return store.exercises.find(e => e.id === id); }
-  function isCardio(ex) { return ex.group === "Cardio"; }
-  function exercisesForDay(i) { return store.week[i].exerciseIds.map(getEx).filter(Boolean); }
-  function newId() { return "ex-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-
-  function formatTime(totalSeconds) {
-    const m = Math.floor(totalSeconds / 60);
-    const s = totalSeconds % 60;
-    return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-  }
-
-  function thumbLabel(name) {
-    const words = name.split(" ").filter(w => w.length > 2);
-    return (words[0] || name).slice(0, 3).toUpperCase();
-  }
-  function mediaSmallHTML(ex) {
-    if (ex.media) {
-      // Miniaturas aparecem em listas (dia, biblioteca) com vários exercícios de uma vez.
-      // Sem autoplay/loop aqui: reproduzir vários vídeos remotos ao mesmo tempo trava o
-      // navegador no celular. preload="metadata" ainda mostra o primeiro quadro na maioria
-      // dos navegadores, sem transmitir o vídeo inteiro.
-      return ex.mediaType === "video"
-        ? `<video class="thumb-media" src="${escapeAttr(ex.media)}" muted playsinline preload="metadata"></video>`
-        : `<img class="thumb-media" src="${escapeAttr(ex.media)}" alt="">`;
-    }
-    return `${escapeHtml(thumbLabel(ex.name))}<br>GIF`;
-  }
-  function mediaBoxInnerHTML(ex) {
-    if (ex.media) {
-      return ex.mediaType === "video"
-        ? `<video class="media-fill" src="${escapeAttr(ex.media)}" muted loop autoplay playsinline></video>`
-        : `<img class="media-fill" src="${escapeAttr(ex.media)}" alt="">`;
-    }
-    return `<div class="big-label">${escapeHtml(thumbLabel(ex.name))}</div><div class="cap">Sem gif/vídeo — edite na biblioteca</div>`;
+  function findCheckin(date) { return store.checkins.find(c => c.date === date); }
+  function kindOfTags(tags) {
+    if (!tags || !tags.length) return "descanso";
+    const onlyCardio = tags.every(t => t === "Cardio");
+    return onlyCardio ? "cardio" : "forca";
   }
 
   // ---------- Estado de navegação ----------
 
-  let activeIndex = new Date().getDay();
-  activeIndex = activeIndex === 0 ? 6 : activeIndex - 1;
-
-  let mode = "week"; // 'week' | 'session' | 'edit' | 'history'
-  let session = null;
-  let lastSummary = null;
-
-  let editingDayIndex = activeIndex;
-  let editTab = "day"; // 'day' | 'library'
-  let showExerciseForm = false;
-  let formData = null;
-  let formMode = "new"; // 'new' | 'edit'
-  let formAssignDay = null;
-  let confirmDeleteId = null;
-  let formError = null;
-  let historyExerciseId = null;
-  let historyReturn = null;
-
+  let weekOffset = 0; // 0 = semana atual
+  let selectedDate = todayISO();
   let section = "treino"; // 'treino' | 'bio'
+  let checkinFormOpen = false;
+  let checkinFormData = null;
+
   let bioFormOpen = false;
   let bioFormData = null;
   let bioFormError = null;
   let bioChartMetric = "weight";
 
-  const railEl = document.getElementById("dayRail");
   const viewEl = document.getElementById("workoutView");
 
-  function currentDay() { return store.week[session.dayIndex]; }
-  function currentExercise() { return exercisesForDay(session.dayIndex)[session.exIndex]; }
-
-  // ---------- Rail ----------
-
-  function renderRail() {
-    railEl.innerHTML = "";
-    DOW_META.forEach((meta, i) => {
-      const day = store.week[i];
-      const btn = document.createElement("button");
-      btn.className = "day-pill";
-      btn.dataset.kind = day.kind;
-      const selected = mode === "edit" ? i === editingDayIndex : (mode === "week" && i === activeIndex);
-      btn.setAttribute("aria-selected", selected ? "true" : "false");
-      btn.innerHTML = `
-        <span class="dow">${meta.dow}</span>
-        <span class="dow-full">${meta.full}</span>
-        <span class="dot"></span>
-      `;
-      btn.addEventListener("click", () => {
-        if (mode === "session" || mode === "history") return;
-        if (mode === "edit") { editingDayIndex = i; editTab = "day"; showExerciseForm = false; renderRail(); renderEditBody(); return; }
-        activeIndex = i;
-        renderRail();
-        renderWorkout();
-      });
-      railEl.appendChild(btn);
+  function weekDates() {
+    const base = mondayOf(new Date());
+    base.setDate(base.getDate() + weekOffset * 7);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return d;
     });
   }
 
-  document.getElementById("editToggle").addEventListener("click", () => {
-    if (mode === "session" || mode === "history") return;
-    if (mode === "edit") { closeEdit(); } else { openEdit(); }
-  });
-
   document.getElementById("bioToggle").addEventListener("click", () => {
-    if (mode === "session") return;
     const bioBtn = document.getElementById("bioToggle");
-    const editBtn = document.getElementById("editToggle");
     if (section === "bio") {
       section = "treino";
-      mode = "week";
-      railEl.style.display = "";
-      editBtn.style.display = "";
-      bioBtn.textContent = "Bioimpedância";
-      renderRail();
+      bioBtn.classList.remove("active");
       renderWorkout();
     } else {
       section = "bio";
       bioFormOpen = false;
-      railEl.style.display = "none";
-      editBtn.style.display = "none";
-      bioBtn.textContent = "← Treinos";
+      bioBtn.classList.add("active");
       renderBioView();
     }
   });
 
-  // ---------- Tela de lista do dia ----------
+  document.getElementById("dataToggle").addEventListener("click", () => {
+    if (section !== "treino") { section = "treino"; document.getElementById("bioToggle").classList.remove("active"); }
+    renderDataView();
+  });
+
+  // ---------- Tela principal (semana + check-in do dia) ----------
 
   function renderWorkout() {
-    const day = store.week[activeIndex];
-    const meta = DOW_META[activeIndex];
+    const dates = weekDates();
+    const todayStr = todayISO();
+    if (!dates.some(d => toISODate(d) === selectedDate)) selectedDate = toISODate(dates[0]);
 
-    let toastHtml = "";
-    if (lastSummary) {
-      toastHtml = `<div class="toast"><span>🏁</span><span><b>Treino concluído.</b> ${escapeHtml(lastSummary)}</span></div>`;
-      lastSummary = null;
-    }
-
-    if (day.kind === "descanso") {
-      viewEl.innerHTML = `
-        ${toastHtml}
-        <div class="workout-head">
-          <div><h1>${meta.full}</h1><div class="meta">Nenhum treino cadastrado para hoje</div></div>
-          <span class="badge descanso">Descanso</span>
-        </div>
-        <div class="rest-card"><div class="display">Dia livre</div>Aproveite para recuperar, ou edite este dia pra adicionar um treino.</div>
-        <p class="tip-note"><b>Dica:</b> toda vez que você concluir um treino, o peso usado em cada exercício fica registrado — clique no 📈 pra ver a evolução.</p>
+    const railHtml = dates.map((d, i) => {
+      const iso = toISODate(d);
+      const c = findCheckin(iso);
+      const kind = c ? kindOfTags(c.tags) : "descanso";
+      const future = iso > todayStr;
+      const selected = iso === selectedDate;
+      return `
+        <button type="button" class="day-pill" data-kind="${kind}" data-future="${future}" aria-selected="${selected}" data-date="${iso}">
+          <span class="dow">${DOW_META[i].dow}</span>
+          <span class="dnum">${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}</span>
+          <span class="dot"></span>
+        </button>
       `;
-      return;
-    }
-
-    const exs = exercisesForDay(activeIndex);
-    const badgeClass = day.kind;
-    const rows = exs.map(ex => `
-      <div class="exercise">
-        <div class="thumb">${mediaSmallHTML(ex)}</div>
-        <div class="info">
-          <p class="name">${escapeHtml(ex.name)}</p>
-          <div class="sub"><span><b>${ex.sets}</b> séries</span><span><b>${escapeHtml(ex.reps)}</b> reps</span></div>
-        </div>
-        ${!isCardio(ex)
-          ? `<div class="weight"><div class="kg">${ex.weight}<span style="font-size:0.9rem">kg</span></div><div class="lbl">atual</div></div>`
-          : `<div class="weight"><div class="kg" style="font-size:1rem">—</div><div class="lbl">tempo</div></div>`
-        }
-        ${!isCardio(ex) ? `<button type="button" class="hist-btn" onclick="openHistory('${ex.id}')" title="Ver progressão de carga">📈</button>` : `<span></span>`}
-      </div>
-    `).join("");
-
-    viewEl.innerHTML = `
-      ${toastHtml}
-      <div class="workout-head">
-        <div><h1>${escapeHtml(day.focus)}</h1><div class="meta">${meta.full} · ${exs.length} exercícios</div></div>
-        <span class="badge ${badgeClass}">${KIND_LABEL[day.kind]}</span>
-      </div>
-      ${exs.length
-        ? `<div class="exercise-list">${rows}</div><button class="start-btn" id="startBtn">Iniciar treino</button>`
-        : `<div class="rest-card"><div class="display">Sem exercícios ainda</div>Clique em "Editar treinos" pra montar este dia.</div>`
-      }
-      <p class="tip-note">
-        <b>Dica:</b> toda vez que você concluir um treino, o
-        peso usado em cada exercício fica registrado — clique no 📈 pra ver a evolução.
-      </p>
-    `;
-    const startBtn = document.getElementById("startBtn");
-    if (startBtn) startBtn.addEventListener("click", () => startWorkout(activeIndex));
-  }
-
-  // ---------- Fluxo da sessão de treino ----------
-
-  function startWorkout(dayIndex) {
-    mode = "session";
-    session = { dayIndex, exIndex: 0, elapsedSec: 0, elapsedTimerId: null, record: {} };
-    renderRail();
-    session.elapsedTimerId = setInterval(() => {
-      session.elapsedSec++;
-      const el = document.getElementById("elapsedDisplay");
-      if (el) el.textContent = formatTime(session.elapsedSec);
-    }, 1000);
-    enterExercise(0);
-  }
-
-  function enterExercise(i) {
-    closeLightbox();
-    stopRestTimer();
-    stopCardioTimer();
-    session.exIndex = i;
-    const ex = currentExercise();
-    if (!isCardio(ex)) {
-      session.sets = Array.from({ length: ex.sets }, () => ({ weight: ex.weight, reps: "", done: false }));
-      session.cardioSec = null;
-    } else {
-      session.sets = null;
-      session.cardioSec = 0;
-      session.cardioRunning = false;
-    }
-    renderSession();
-    if (!isCardio(ex)) startRestTimer();
-    else startCardioTimer();
-  }
-
-  function writeBackWeights() {
-    if (!session || !Object.keys(session.record).length) return;
-    Object.entries(session.record).forEach(([id, w]) => { const ex = getEx(id); if (ex) ex.weight = w; });
-    saveStore();
-  }
-
-  function exitSession() {
-    closeLightbox();
-    writeBackWeights();
-    clearInterval(session.elapsedTimerId);
-    stopRestTimer();
-    stopCardioTimer();
-    session = null;
-    mode = "week";
-    renderRail();
-    renderWorkout();
-  }
-
-  function finishWorkout() {
-    closeLightbox();
-    writeBackWeights();
-    logHistory();
-    const total = session.elapsedSec;
-    clearInterval(session.elapsedTimerId);
-    stopRestTimer();
-    stopCardioTimer();
-    session = null;
-    mode = "week";
-    lastSummary = `Tempo total: ${formatTime(total)}.`;
-    renderRail();
-    renderWorkout();
-  }
-
-  function goPrev() { if (session.exIndex > 0) enterExercise(session.exIndex - 1); }
-  function goNext() {
-    if (session.exIndex < exercisesForDay(session.dayIndex).length - 1) enterExercise(session.exIndex + 1);
-    else finishWorkout();
-  }
-
-  // ---------- Temporizador de descanso ----------
-
-  function startRestTimer() {
-    stopRestTimer();
-    const ex = currentExercise();
-    session.restDuration = ex.rest || REST_DURATION;
-    session.restSec = session.restDuration;
-    session.restRunning = true;
-    tickRest();
-    session.restTimerId = setInterval(tickRest, 1000);
-  }
-  function tickRest() {
-    const ring = document.getElementById("restRing");
-    const inner = document.getElementById("restInner");
-    const label = document.getElementById("restLabel");
-    const pauseBtn = document.getElementById("restPauseBtn");
-    if (!ring) return;
-    const pct = Math.round(((session.restDuration - session.restSec) / session.restDuration) * 100);
-    ring.style.setProperty("--pct", pct);
-    inner.textContent = formatTime(session.restSec);
-    if (session.restSec <= 0) {
-      clearInterval(session.restTimerId);
-      session.restRunning = false;
-      if (label) label.innerHTML = "<b>Pronto pra próxima série</b>";
-      if (pauseBtn) pauseBtn.disabled = true;
-      return;
-    }
-    session.restSec--;
-  }
-  function stopRestTimer() {
-    if (session && session.restTimerId) clearInterval(session.restTimerId);
-    if (session) session.restRunning = false;
-  }
-  function toggleRestPause() {
-    if (!session) return;
-    if (session.restRunning) { clearInterval(session.restTimerId); session.restRunning = false; }
-    else if (session.restSec > 0) { session.restRunning = true; session.restTimerId = setInterval(tickRest, 1000); }
-    renderRestBlock();
-  }
-  function skipRest() { if (!session) return; session.restSec = 0; tickRest(); }
-
-  // ---------- Cronômetro de aeróbico ----------
-
-  function startCardioTimer() {
-    stopCardioTimer();
-    session.cardioRunning = true;
-    session.cardioTimerId = setInterval(() => {
-      session.cardioSec++;
-      const d = document.getElementById("cardioDisplay");
-      if (d) d.textContent = formatTime(session.cardioSec);
-    }, 1000);
-  }
-  function stopCardioTimer() {
-    if (session && session.cardioTimerId) clearInterval(session.cardioTimerId);
-    if (session) session.cardioRunning = false;
-  }
-  function toggleCardio() {
-    if (session.cardioRunning) stopCardioTimer(); else startCardioTimer();
-    renderCardioBlock();
-  }
-
-  // ---------- Campos de série ----------
-
-  function updateSetField(i, field, value) {
-    if (field === "weight") {
-      const v = parseFloat(value) || 0;
-      session.sets[i].weight = v;
-      session.record[currentExercise().id] = v;
-    } else {
-      session.sets[i].reps = value;
-    }
-  }
-  function stepWeight(i, delta) {
-    const input = document.getElementById("w-" + i);
-    let val = Math.max(0, (parseFloat(input.value) || 0) + delta);
-    input.value = val;
-    updateSetField(i, "weight", val);
-  }
-  function toggleSet(i) {
-    session.sets[i].done = !session.sets[i].done;
-    renderSetsArea();
-    const ex = currentExercise();
-    const isLast = i === ex.sets - 1;
-    if (session.sets[i].done && !isLast) startRestTimer();
-    if (session.sets[i].done && isLast) { session.restSec = 0; stopRestTimer(); renderRestBlock(); }
-  }
-
-  // ---------- Render da sessão ----------
-
-  function renderSession() {
-    const exs = exercisesForDay(session.dayIndex);
-    const ex = currentExercise();
-    const total = exs.length;
-    const isLast = session.exIndex === total - 1;
-
-    const dots = exs.map((e, i) => {
-      const cls = i < session.exIndex ? "done" : (i === session.exIndex ? "current" : "");
-      return `<span class="${cls}"></span>`;
     }).join("");
 
+    const weekLabel = `${pad2(dates[0].getDate())}/${pad2(dates[0].getMonth() + 1)} – ${pad2(dates[6].getDate())}/${pad2(dates[6].getMonth() + 1)}` + (weekOffset === 0 ? " · essa semana" : "");
+
+    const trainedCount = dates.filter(d => { const c = findCheckin(toISODate(d)); return c && kindOfTags(c.tags) === "forca"; }).length;
+    const cardioCount = dates.filter(d => { const c = findCheckin(toISODate(d)); return c && kindOfTags(c.tags) === "cardio"; }).length;
+    const restCount = 7 - trainedCount - cardioCount;
+
     viewEl.innerHTML = `
-      <div class="session-wrap">
-        <div class="session-top">
-          <button class="exit-btn" id="exitBtn">✕ Sair</button>
-          <div class="stopwatch"><span class="pulse"></span><span id="elapsedDisplay">${formatTime(session.elapsedSec)}</span></div>
-        </div>
-        <div class="progress-dots">${dots}</div>
-        <div class="media-box ${ex.media ? "zoomable" : ""}" ${ex.media ? 'onclick="openLightbox()"' : ""}>
-          ${mediaBoxInnerHTML(ex)}
-          ${ex.media ? '<span class="zoom-hint">⤢ Ampliar</span>' : ""}
-        </div>
-        <div class="ex-title-row">
-          <h1>${escapeHtml(ex.name)}</h1>
-          <div class="target">Exercício ${session.exIndex + 1} de ${total} · Alvo: ${ex.sets}× ${escapeHtml(ex.reps)}</div>
-        </div>
-        <div id="setsArea"></div>
-        <div id="cardioArea"></div>
-        <div class="session-nav">
-          <button id="prevBtn" ${session.exIndex === 0 ? "disabled" : ""}>⟵ Anterior</button>
-          <button id="nextBtn" class="primary">${isLast ? "Concluir treino" : "Próximo exercício ⟶"}</button>
-        </div>
+      <div class="week-nav">
+        <button type="button" id="weekPrev" title="Semana anterior">⟵</button>
+        <span class="week-label">${weekLabel}</span>
+        <button type="button" id="weekNext" ${weekOffset >= 0 ? "disabled" : ""} title="Próxima semana">⟶</button>
       </div>
-    `;
-    document.getElementById("exitBtn").addEventListener("click", exitSession);
-    document.getElementById("prevBtn").addEventListener("click", goPrev);
-    document.getElementById("nextBtn").addEventListener("click", goNext);
+      <div class="day-rail" id="dayRail">${railHtml}</div>
 
-    if (!isCardio(ex)) { renderSetsArea(); renderRestBlock(); }
-    else renderCardioBlock();
+      <div class="stats-row">
+        <div><div class="stat-num" style="color:var(--accent)">${trainedCount}</div><div class="stat-lbl">Musculação</div></div>
+        <div><div class="stat-num" style="color:var(--cardio)">${cardioCount}</div><div class="stat-lbl">Cardio</div></div>
+        <div><div class="stat-num" style="color:var(--muted)">${restCount}</div><div class="stat-lbl">Descanso</div></div>
+      </div>
+
+      <div id="dayPanel"></div>
+
+      <div class="section-label">Histórico recente</div>
+      <div class="hist-list" id="histList"></div>
+    `;
+
+    document.getElementById("weekPrev").addEventListener("click", () => { weekOffset -= 1; renderWorkout(); });
+    document.getElementById("weekNext").addEventListener("click", () => { if (weekOffset < 0) { weekOffset += 1; renderWorkout(); } });
+    document.querySelectorAll(".day-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.future === "true") return;
+        selectedDate = btn.dataset.date;
+        checkinFormOpen = false;
+        renderDayPanel();
+        document.querySelectorAll(".day-pill").forEach(b => b.setAttribute("aria-selected", b.dataset.date === selectedDate ? "true" : "false"));
+      });
+    });
+
+    renderDayPanel();
+    renderHistList();
   }
 
-  function renderSetsArea() {
-    const area = document.getElementById("setsArea");
-    if (!area) return;
-    const ex = currentExercise();
-    area.innerHTML = `
-      <div class="sets-table">
-        ${session.sets.map((s, i) => `
-          <div class="set-row ${s.done ? "done" : ""}">
-            <div class="set-num">${i + 1}</div>
-            <div class="field">
-              <label>Peso (kg)</label>
-              <div class="stepper">
-                <button type="button" onclick="stepWeight(${i}, -2.5)">−</button>
-                <input id="w-${i}" type="number" step="0.5" value="${s.weight}" oninput="updateSetField(${i}, 'weight', this.value)">
-                <button type="button" onclick="stepWeight(${i}, 2.5)">+</button>
-              </div>
-            </div>
-            <div class="field">
-              <label>Reps</label>
-              <input type="text" placeholder="${escapeAttr(ex.reps)}" value="${escapeAttr(s.reps)}" oninput="updateSetField(${i}, 'reps', this.value)">
-            </div>
-            <button type="button" class="done-btn" onclick="toggleSet(${i})" title="Marcar série concluída">✓</button>
+  function dayLabelFor(iso) {
+    const d = parseISODate(iso);
+    let dow = d.getDay(); dow = dow === 0 ? 6 : dow - 1;
+    return DOW_META[dow].full + " · " + pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1);
+  }
+
+  function renderDayPanel() {
+    const panel = document.getElementById("dayPanel");
+    if (!panel) return;
+    const iso = selectedDate;
+    const todayStr = todayISO();
+    const isFuture = iso > todayStr;
+    const c = findCheckin(iso);
+
+    if (isFuture) {
+      panel.innerHTML = `<div class="rest-card"><div class="display">${escapeHtml(dayLabelFor(iso))}</div>Esse dia ainda não chegou.</div>`;
+      return;
+    }
+
+    if (checkinFormOpen) {
+      panel.innerHTML = checkinFormHTML();
+      wireCheckinForm();
+      return;
+    }
+
+    if (!c) {
+      panel.innerHTML = `
+        <div class="checkin-card">
+          <div class="workout-head" style="margin-bottom:0">
+            <div><h1>${escapeHtml(dayLabelFor(iso))}</h1><div class="meta">Nenhum treino registrado</div></div>
+            <span class="badge descanso">Livre</span>
           </div>
-        `).join("")}
-      </div>
-    `;
-  }
-
-  function renderRestBlock() {
-    const area = document.getElementById("setsArea");
-    if (!area) return;
-    let block = document.getElementById("restBlock");
-    if (!block) { block = document.createElement("div"); block.id = "restBlock"; area.insertAdjacentElement("afterend", block); }
-    block.outerHTML = `
-      <div class="rest-block" id="restBlock">
-        <div class="rest-info">
-          <div class="rest-ring" id="restRing" style="--pct:0"><div class="inner" id="restInner">${formatTime(session.restDuration || REST_DURATION)}</div></div>
-          <div class="rest-label" id="restLabel">Descanso entre séries<b>Marque uma série pra reiniciar</b></div>
+          <button type="button" class="btn-small primary" id="openCheckinBtn">+ Registrar treino</button>
         </div>
-        <div class="rest-actions">
-          <button type="button" id="restPauseBtn" onclick="toggleRestPause()">${session.restRunning ? "Pausar" : "Retomar"}</button>
-          <button type="button" onclick="skipRest()">Pular</button>
+      `;
+      document.getElementById("openCheckinBtn").addEventListener("click", () => { openCheckinForm(iso); });
+      return;
+    }
+
+    const kind = kindOfTags(c.tags);
+    panel.innerHTML = `
+      <div class="checkin-card">
+        <div class="workout-head" style="margin-bottom:0">
+          <div><h1>${escapeHtml(dayLabelFor(iso))}</h1></div>
+          <span class="badge ${kind}">${kind === "cardio" ? "Cardio" : "Musculação"}</span>
+        </div>
+        <div class="checkin-view">
+          <div class="checkin-tags">${c.tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join("")}</div>
+          ${c.duration ? `<div class="checkin-meta-row"><span>⏱ ${c.duration} min</span></div>` : ""}
+          ${c.note ? `<div class="checkin-note">${escapeHtml(c.note)}</div>` : ""}
+        </div>
+        <div class="form-actions" style="justify-content:flex-start">
+          <button type="button" class="btn-small" id="editCheckinBtn">Editar</button>
+          <button type="button" class="btn-small danger" id="deleteCheckinBtn">Excluir</button>
         </div>
       </div>
     `;
-    const ring = document.getElementById("restRing");
-    const inner = document.getElementById("restInner");
-    const dur = session.restDuration || REST_DURATION;
-    const pct = Math.round(((dur - session.restSec) / dur) * 100);
-    ring.style.setProperty("--pct", pct);
-    inner.textContent = formatTime(Math.max(0, session.restSec));
-  }
-
-  function renderCardioBlock() {
-    const area = document.getElementById("cardioArea");
-    if (!area) return;
-    const ex = currentExercise();
-    area.innerHTML = `
-      <div class="cardio-block">
-        <div class="cap">Tempo do exercício · alvo ${escapeHtml(ex.reps)}</div>
-        <div class="big-time" id="cardioDisplay">${formatTime(session.cardioSec)}</div>
-        <div class="cardio-actions"><button type="button" class="primary" onclick="toggleCardio()">${session.cardioRunning ? "Pausar" : "Retomar"}</button></div>
-      </div>
-    `;
-  }
-
-  // ---------- Histórico de progressão de carga ----------
-
-  function logHistory() {
-    const today = new Date().toISOString().slice(0, 10);
-    exercisesForDay(session.dayIndex).forEach(ex => {
-      if (isCardio(ex)) return;
-      if (!ex.history) ex.history = [];
-      const idx = ex.history.findIndex(h => h.date === today);
-      if (idx >= 0) ex.history[idx].weight = ex.weight;
-      else ex.history.push({ date: today, weight: ex.weight });
+    document.getElementById("editCheckinBtn").addEventListener("click", () => openCheckinForm(iso));
+    document.getElementById("deleteCheckinBtn").addEventListener("click", () => {
+      store.checkins = store.checkins.filter(x => x.date !== iso);
+      saveStore();
+      renderWorkout();
     });
-    saveStore();
   }
 
-  function formatDateBR(d) { const [, m, da] = d.split("-"); return `${da}/${m}`; }
-
-  function openHistory(exId) {
-    historyReturn = { mode, editTab };
-    historyExerciseId = exId;
-    mode = "history";
-    renderRail();
-    renderHistoryView();
-  }
-  function closeHistory() {
-    mode = historyReturn ? historyReturn.mode : "week";
-    editTab = historyReturn ? historyReturn.editTab : editTab;
-    historyReturn = null;
-    renderRail();
-    if (mode === "edit") renderEdit(); else renderWorkout();
-  }
-  function deleteHistoryEntry(exId, date) {
-    const ex = getEx(exId);
-    ex.history = (ex.history || []).filter(h => h.date !== date);
-    saveStore();
-    renderHistoryView();
+  function openCheckinForm(iso) {
+    const existing = findCheckin(iso);
+    checkinFormData = existing
+      ? { date: iso, tags: existing.tags.slice(), note: existing.note || "", duration: existing.duration || "" }
+      : { date: iso, tags: [], note: "", duration: "" };
+    checkinFormOpen = true;
+    renderDayPanel();
   }
 
-  function miniChartSVG(points) {
-    if (!points.length) return "";
-    const values = points.map(p => p.value);
-    let lo = Math.min(...values), hi = Math.max(...values);
-    if (lo === hi) { const d = Math.max(1, Math.abs(lo) * 0.05); lo -= d; hi += d; }
-    const pad = (hi - lo) * 0.2 || 1;
-    lo -= pad; hi += pad;
-    const W = 320, H = 130, M = 26;
-    const pts = points.map((p, i) => {
-      const x = points.length > 1 ? M + (i / (points.length - 1)) * (W - 2 * M) : W / 2;
-      const y = H - M - ((p.value - lo) / (hi - lo)) * (H - 2 * M);
-      return { x, y, ...p };
-    });
-    const line = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  function checkinFormHTML() {
+    const d = checkinFormData;
+    const chips = GROUPS.map(g => `
+      <button type="button" class="chip ${g === "Cardio" ? "cardio-chip" : ""} ${d.tags.includes(g) ? "selected" : ""}" data-tag="${escapeAttr(g)}">${escapeHtml(g)}</button>
+    `).join("");
     return `
-      <svg viewBox="0 0 ${W} ${H}" class="hist-chart">
-        <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        ${pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="var(--accent)"/>`).join("")}
-        <text x="${pts[0].x}" y="${H - 6}" font-size="8" fill="var(--muted)" text-anchor="start">${formatDateBR(pts[0].date)}</text>
-        <text x="${pts[pts.length - 1].x}" y="${H - 6}" font-size="8" fill="var(--muted)" text-anchor="end">${formatDateBR(pts[pts.length - 1].date)}</text>
-      </svg>
+      <div class="ex-form">
+        <h3>${escapeHtml(dayLabelFor(d.date))}</h3>
+        <div class="form-row">
+          <label>O que você treinou?</label>
+          <div class="chip-grid" id="tagChips">${chips}</div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>Duração (min, opcional)</label><input type="number" id="ckDuration" min="0" value="${escapeAttr(d.duration)}"></div>
+        </div>
+        <div class="form-row"><label>Nota (opcional)</label><textarea id="ckNote">${escapeHtml(d.note)}</textarea></div>
+        <p class="hint" id="ckError" style="color:var(--danger);display:none"></p>
+        <div class="form-actions">
+          <button type="button" class="btn-small" id="ckCancel">Cancelar</button>
+          <button type="button" class="btn-small primary" id="ckSave">Salvar</button>
+        </div>
+      </div>
     `;
   }
-  function historyChartSVG(hist) {
-    return miniChartSVG(hist.map(h => ({ date: h.date, value: h.weight })));
+
+  function wireCheckinForm() {
+    document.querySelectorAll("#tagChips .chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        const tag = chip.dataset.tag;
+        const idx = checkinFormData.tags.indexOf(tag);
+        if (idx >= 0) checkinFormData.tags.splice(idx, 1); else checkinFormData.tags.push(tag);
+        chip.classList.toggle("selected");
+      });
+    });
+    document.getElementById("ckCancel").addEventListener("click", () => { checkinFormOpen = false; renderDayPanel(); });
+    document.getElementById("ckSave").addEventListener("click", () => {
+      const note = document.getElementById("ckNote").value.trim();
+      const durationRaw = document.getElementById("ckDuration").value;
+      const duration = durationRaw === "" ? null : Math.max(0, parseInt(durationRaw, 10) || 0);
+      if (!checkinFormData.tags.length) {
+        const err = document.getElementById("ckError");
+        err.textContent = "Escolha pelo menos um grupo muscular ou Cardio.";
+        err.style.display = "block";
+        return;
+      }
+      const entry = { date: checkinFormData.date, tags: checkinFormData.tags.slice(), note, duration };
+      const idx = store.checkins.findIndex(c => c.date === entry.date);
+      if (idx >= 0) store.checkins[idx] = entry; else store.checkins.push(entry);
+      store.checkins.sort((a, b) => a.date.localeCompare(b.date));
+      saveStore();
+      checkinFormOpen = false;
+      renderWorkout();
+    });
+  }
+
+  function renderHistList() {
+    const list = document.getElementById("histList");
+    if (!list) return;
+    const entries = store.checkins.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 15);
+    if (!entries.length) {
+      list.innerHTML = `<p class="hint">Nenhum treino registrado ainda.</p>`;
+      return;
+    }
+    list.innerHTML = entries.map(c => {
+      const d = parseISODate(c.date);
+      return `
+        <div class="hist-row">
+          <div class="hist-date">${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}<small>${["DOM","SEG","TER","QUA","QUI","SEX","SÁB"][d.getDay()]}</small></div>
+          <div class="hist-tags">${c.tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join("")}</div>
+          <button type="button" title="Editar" data-hist-date="${c.date}">✎</button>
+        </div>
+      `;
+    }).join("");
+    list.querySelectorAll("button[data-hist-date]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const iso = btn.dataset.histDate;
+        const dates = weekDates();
+        const inWeek = dates.some(d => toISODate(d) === iso);
+        if (!inWeek) {
+          const target = parseISODate(iso);
+          const diffWeeks = Math.round((mondayOf(target) - mondayOf(new Date())) / (7 * 86400000));
+          weekOffset = diffWeeks;
+        }
+        selectedDate = iso;
+        checkinFormOpen = false;
+        renderWorkout();
+      });
+    });
   }
 
   // ---------- Bioimpedância ----------
@@ -1004,7 +587,10 @@
       const e = store.bio.find(b => b.date === date);
       bioFormData = Object.assign({ __editing: true }, e);
     } else {
-      bioFormData = { __editing: false, date: new Date().toISOString().slice(0, 10), weight: "", fatPct: "", musclePct: "", waterPct: "", visceral: "", boneKg: "", bmr: "", bmi: "" };
+      bioFormData = {
+        __editing: false, date: todayISO(), weight: "", fatPct: "", musclePct: "", waterPct: "", visceral: "", boneKg: "", bmr: "", bmi: "",
+        armCm: "", waistCm: "", abdomenCm: "", hipCm: "", thighCm: "", calfCm: "",
+      };
     }
     bioFormOpen = true;
     bioFormError = null;
@@ -1022,6 +608,8 @@
       date: bioFormData.date, weight: num(bioFormData.weight), fatPct: num(bioFormData.fatPct),
       musclePct: num(bioFormData.musclePct), waterPct: num(bioFormData.waterPct), visceral: num(bioFormData.visceral),
       boneKg: num(bioFormData.boneKg), bmr: num(bioFormData.bmr), bmi: num(bioFormData.bmi),
+      armCm: num(bioFormData.armCm), waistCm: num(bioFormData.waistCm), abdomenCm: num(bioFormData.abdomenCm),
+      hipCm: num(bioFormData.hipCm), thighCm: num(bioFormData.thighCm), calfCm: num(bioFormData.calfCm),
     };
     const idx = store.bio.findIndex(b => b.date === entry.date);
     if (idx >= 0) store.bio[idx] = entry; else store.bio.push(entry);
@@ -1060,12 +648,49 @@
           ${field("bmr", "Taxa metabólica basal (kcal)", "1")}
           ${field("bmi", "IMC", "0.1")}
         </div>
-        <p class="hint">Só data e peso são obrigatórios — preencha o resto conforme sua balança mostrar.</p>
+        <div class="section-label" style="margin:4px 0 0">Medidas (fita métrica)</div>
+        <div class="form-grid">
+          ${field("armCm", "Braço (cm)", "0.5")}
+          ${field("waistCm", "Cintura (cm)", "0.5")}
+          ${field("abdomenCm", "Abdômen (cm)", "0.5")}
+          ${field("hipCm", "Quadril (cm)", "0.5")}
+          ${field("thighCm", "Coxa (cm)", "0.5")}
+          ${field("calfCm", "Panturrilha (cm)", "0.5")}
+        </div>
+        <p class="hint">Só data e peso são obrigatórios — preencha o resto conforme sua balança/fita mostrar.</p>
         <div class="form-actions">
           <button type="button" class="btn-small" onclick="cancelBioForm()">Cancelar</button>
           <button type="button" class="btn-small primary" onclick="saveBioForm()">Salvar medição</button>
         </div>
       </div>
+    `;
+  }
+
+  function drawLineChart(points, unit) {
+    const w = 640, h = 220, padL = 40, padR = 14, padT = 14, padB = 28;
+    if (!points.length) return `<svg class="hist-chart" viewBox="0 0 ${w} ${h}"><text x="${w/2}" y="${h/2}" fill="#9c9284" font-size="13" text-anchor="middle">Sem registros ainda</text></svg>`;
+    const values = points.map(p => p.value);
+    let min = Math.min(...values), max = Math.max(...values);
+    if (min === max) { min -= 1; max += 1; }
+    const pad = (max - min) * 0.1;
+    min -= pad; max += pad;
+    const x = i => padL + (i / Math.max(1, points.length - 1)) * (w - padL - padR);
+    const y = v => padT + (1 - (v - min) / (max - min)) * (h - padT - padB);
+    const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+    const dots = points.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="3.5" fill="#e8542c"></circle>`).join("");
+    const first = points[0], last = points[points.length - 1];
+    const labelFirst = parseISODate(first.date);
+    const labelLast = parseISODate(last.date);
+    return `
+      <svg class="hist-chart" viewBox="0 0 ${w} ${h}">
+        <line x1="${padL}" y1="${(h-padB).toFixed(1)}" x2="${w-padR}" y2="${(h-padB).toFixed(1)}" stroke="#3a352c" stroke-width="1"></line>
+        <text x="${padL}" y="${(h-8).toFixed(1)}" fill="#9c9284" font-size="11">${pad2(labelFirst.getDate())}/${pad2(labelFirst.getMonth()+1)}</text>
+        <text x="${w-padR}" y="${(h-8).toFixed(1)}" fill="#9c9284" font-size="11" text-anchor="end">${pad2(labelLast.getDate())}/${pad2(labelLast.getMonth()+1)}</text>
+        <text x="${padL-6}" y="${y(max).toFixed(1)}" fill="#9c9284" font-size="11" text-anchor="end">${max.toFixed(1)}${unit}</text>
+        <text x="${padL-6}" y="${y(min).toFixed(1)}" fill="#9c9284" font-size="11" text-anchor="end">${min.toFixed(1)}${unit}</text>
+        <path d="${path}" fill="none" stroke="#e8542c" stroke-width="2"></path>
+        ${dots}
+      </svg>
     `;
   }
 
@@ -1085,192 +710,79 @@
         ${entries.length ? `
           <div class="add-row" style="margin-top:4px">
             <label style="font-size:.78rem;color:var(--muted)">Ver evolução de:</label>
-            <select onchange="bioChartMetric=this.value; renderBioView();">
-              ${BIO_METRICS.map(m => `<option value="${m.key}" ${bioChartMetric === m.key ? "selected" : ""}>${m.label}</option>`).join("")}
+            <select class="bio-metric-select" id="bioMetricSelect">
+              ${BIO_METRICS.map(m => `<option value="${m.key}" ${m.key === bioChartMetric ? "selected" : ""}>${m.label}</option>`).join("")}
             </select>
           </div>
-          ${points.length ? miniChartSVG(points) : `<p class="hint">Sem dados de "${escapeHtml(metricMeta.label)}" registrados ainda.</p>`}
-
+          ${drawLineChart(points, metricMeta.unit)}
           <div class="section-label">Registros</div>
           <div class="hist-list">
-            ${entries.slice().reverse().map(e => `
-              <div class="hist-row" style="grid-template-columns:1fr auto auto auto">
-                <span>${formatDateBR(e.date)}</span>
-                <span class="hist-weight">${e.weight}kg</span>
-                <button type="button" style="color:var(--fg)" onclick="openBioForm('${e.date}')" title="Editar">✎</button>
-                <button type="button" onclick="deleteBioEntry('${e.date}')" title="Remover">×</button>
-              </div>
-            `).join("")}
+            ${entries.slice().reverse().map(e => {
+              const d = parseISODate(e.date);
+              const val = e[bioChartMetric];
+              return `
+                <div class="bio-hist-row">
+                  <span>${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}</span>
+                  <span class="bio-val">${val != null ? val + metricMeta.unit : "—"}</span>
+                  <span style="display:flex;gap:6px">
+                    <button type="button" title="Editar" onclick="openBioForm('${e.date}')">✎</button>
+                    <button type="button" title="Excluir" onclick="deleteBioEntry('${e.date}')">×</button>
+                  </span>
+                </div>
+              `;
+            }).join("")}
           </div>
-        ` : `<div class="rest-card"><div class="display">Nenhuma medição ainda</div>Adicione sua primeira pesagem com os dados da balança de bioimpedância.</div>`}
+        ` : `<div class="rest-card"><div class="display">Sem registros ainda</div>Clique em "+ Nova medição" pra começar a acompanhar.</div>`}
       </div>
     `;
+    const sel = document.getElementById("bioMetricSelect");
+    if (sel) sel.addEventListener("change", () => { bioChartMetric = sel.value; renderBioView(); });
   }
 
-  function renderHistoryView() {
-    const ex = getEx(historyExerciseId);
-    const hist = (ex.history || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-    const first = hist[0], last = hist[hist.length - 1];
-    const diff = (first && last) ? Math.round((last.weight - first.weight) * 10) / 10 : 0;
+  // ---------- Dados (export/import) ----------
 
+  function renderDataView() {
+    const ckCount = store.checkins.length;
+    const bioCount = store.bio.length;
     viewEl.innerHTML = `
       <div class="history-wrap">
-        <div class="session-top"><button class="exit-btn" onclick="closeHistory()">✕ Voltar</button></div>
-        <div class="ex-title-row">
-          <h1>${escapeHtml(ex.name)}</h1>
-          <div class="target">${escapeHtml(ex.group)} · peso atual ${ex.weight}kg</div>
+        <div class="workout-head"><div><h1>Dados</h1><div class="meta">Backup e sincronização entre aparelhos</div></div></div>
+        <div class="ex-form">
+          <h3>Exportar dados</h3>
+          <p class="hint">Gera um arquivo com tudo que está salvo neste aparelho: ${ckCount} treinos registrados e ${bioCount} registros de bioimpedância. Envie esse arquivo para o outro aparelho (WhatsApp, e-mail etc.) e importe lá.</p>
+          <div class="form-actions"><button class="btn-small primary" onclick="exportData()">Exportar dados (.json)</button></div>
         </div>
-        ${hist.length >= 1 ? `
-          <div class="hist-stats">
-            <div><span class="hist-stat-num">${ex.weight}<small>kg</small></span><span class="hist-stat-lbl">Atual</span></div>
-            ${hist.length >= 2 ? `<div><span class="hist-stat-num" style="color:${diff >= 0 ? "var(--accent)" : "var(--cardio)"}">${diff >= 0 ? "+" : ""}${diff}<small>kg</small></span><span class="hist-stat-lbl">Desde o início</span></div>` : ""}
-            <div><span class="hist-stat-num">${hist.length}</span><span class="hist-stat-lbl">Registro${hist.length > 1 ? "s" : ""}</span></div>
+        <div class="ex-form">
+          <h3>Importar dados</h3>
+          <p class="hint">Selecione um arquivo exportado por este app. Depois você escolhe se quer <strong>mesclar</strong> (mantém o que já está salvo aqui) ou <strong>substituir tudo</strong> pelo conteúdo do arquivo.</p>
+          <div class="form-actions">
+            <label class="btn-small" for="importFileInput" style="cursor:pointer;">Escolher arquivo</label>
+            <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="handleImportFile(this)">
           </div>
-          ${historyChartSVG(hist)}
-        ` : `<div class="rest-card"><div class="display">Ainda sem histórico</div>O registro é feito sozinho sempre que você concluir um treino com este exercício.</div>`}
-        ${hist.length ? `
-          <div class="section-label">Registros</div>
-          <div class="hist-list">
-            ${hist.slice().reverse().map(h => `
-              <div class="hist-row">
-                <span>${formatDateBR(h.date)}</span>
-                <span class="hist-weight">${h.weight}kg</span>
-                <button type="button" onclick="deleteHistoryEntry('${ex.id}','${h.date}')" title="Remover registro">×</button>
-              </div>
-            `).join("")}
-          </div>
-        ` : ""}
-      </div>
-    `;
-  }
-
-  // ---------- Lightbox (ampliar gif/vídeo) ----------
-
-  function lightboxKeyHandler(e) { if (e.key === "Escape") closeLightbox(); }
-
-  function openLightbox() {
-    const ex = currentExercise();
-    if (!ex || !ex.media) return;
-    closeLightbox();
-    const el = document.createElement("div");
-    el.className = "lightbox-backdrop";
-    el.id = "lightboxBackdrop";
-    el.innerHTML = `
-      <button type="button" class="lightbox-close" onclick="closeLightbox()" aria-label="Fechar">✕</button>
-      ${ex.mediaType === "video"
-        ? `<video src="${escapeAttr(ex.media)}" autoplay loop controls playsinline></video>`
-        : `<img src="${escapeAttr(ex.media)}" alt="${escapeAttr(ex.name)}">`
-      }
-    `;
-    el.addEventListener("click", (e) => { if (e.target === el) closeLightbox(); });
-    document.body.appendChild(el);
-    document.documentElement.style.overflow = "hidden";
-    document.addEventListener("keydown", lightboxKeyHandler);
-  }
-  function closeLightbox() {
-    const el = document.getElementById("lightboxBackdrop");
-    if (el) el.remove();
-    document.documentElement.style.overflow = "";
-    document.removeEventListener("keydown", lightboxKeyHandler);
-  }
-
-  // ---------- Modo de edição ----------
-
-  function openEdit() {
-    mode = "edit";
-    editingDayIndex = activeIndex;
-    editTab = "day";
-    showExerciseForm = false;
-    renderRail();
-    renderEdit();
-  }
-  function closeEdit() {
-    mode = "week";
-    activeIndex = editingDayIndex;
-    renderRail();
-    renderWorkout();
-  }
-  function switchEditTab(tab) { editTab = tab; showExerciseForm = false; renderRail(); renderEditBody(); }
-
-  function renderEdit() {
-    viewEl.innerHTML = `
-      <div class="edit-wrap">
-        <div class="edit-top">
-          <div class="edit-tabs">
-            <button class="tab-btn ${editTab === "day" ? "active" : ""}" onclick="switchEditTab('day')">Treino do dia</button>
-            <button class="tab-btn ${editTab === "library" ? "active" : ""}" onclick="switchEditTab('library')">Biblioteca</button>
-            <button class="tab-btn ${editTab === "data" ? "active" : ""}" onclick="switchEditTab('data')">Dados</button>
-          </div>
-          <button class="done-edit-btn" id="doneEditBtn">Concluído</button>
-        </div>
-        <div id="editBody"></div>
-      </div>
-    `;
-    document.getElementById("doneEditBtn").addEventListener("click", closeEdit);
-    renderEditBody();
-  }
-
-  function renderEditBody() {
-    const body = document.getElementById("editBody");
-    if (!body) return;
-    body.innerHTML = editTab === "day" ? dayEditorHTML() : editTab === "library" ? libraryHTML() : dataTabHTML();
-  }
-
-  // ----- Dados (exportar/importar) -----
-
-  function dataTabHTML() {
-    const exCount = store.exercises.length;
-    const bioCount = (store.bio || []).length;
-    return `
-      <div class="ex-form">
-        <h3>Exportar dados</h3>
-        <p class="hint">Gera um arquivo com tudo que está salvo neste aparelho: treinos, exercícios (${exCount}), histórico de cargas e bioimpedância (${bioCount} registros). Envie esse arquivo para o outro aparelho (WhatsApp, e-mail etc.) e importe lá.</p>
-        <div class="form-actions">
-          <button class="btn-small primary" onclick="exportData()">Exportar dados (.json)</button>
-        </div>
-      </div>
-      <div class="ex-form">
-        <h3>Importar dados</h3>
-        <p class="hint">Selecione um arquivo exportado por este app. Depois você escolhe se quer <strong>mesclar</strong> (mantém o que já está salvo aqui, como histórico de cargas e bioimpedância) ou <strong>substituir tudo</strong> pelo conteúdo do arquivo.</p>
-        <div class="form-actions">
-          <label class="btn-small" for="importFileInput" style="cursor:pointer;">Escolher arquivo</label>
-          <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="handleImportFile(this)">
         </div>
       </div>
     `;
   }
 
   async function exportData() {
-    const payload = { app: "treino-app", version: 1, exportedAt: new Date().toISOString(), store };
+    const payload = { app: "treino-app", version: 2, exportedAt: new Date().toISOString(), store };
     const json = JSON.stringify(payload, null, 2);
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = todayISO();
     const filename = `treino-dados-${stamp}.json`;
-
-    // Dentro do artifact Claude: usa a capacidade de downloads do viewer.
     try {
       if (window.claude && typeof window.claude.use === "function") {
         const downloads = await window.claude.use("downloads");
-        if (downloads) {
-          await downloads.save({ filename, data: json });
-          return;
-        }
+        if (downloads) { await downloads.save({ filename, data: json }); return; }
       }
-    } catch (e) { /* sem permissão ou indisponível: tenta o modo padrão abaixo */ }
-
-    // Fora do artifact (ex: site publicado no GitHub Pages): download comum do navegador.
+    } catch (e) { /* fallback */ }
     try {
       const blob = new Blob([json], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) {
-      alert("Não foi possível exportar o arquivo neste navegador.");
-    }
+    } catch (e) { alert("Não foi possível exportar o arquivo neste navegador."); }
   }
 
   function handleImportFile(input) {
@@ -1281,11 +793,13 @@
       let parsed;
       try { parsed = JSON.parse(String(reader.result)); } catch (e) { parsed = null; }
       const incoming = parsed && parsed.store ? parsed.store : parsed;
-      if (!incoming || !Array.isArray(incoming.exercises) || !Array.isArray(incoming.week)) {
+      if (!incoming || (!Array.isArray(incoming.checkins) && !Array.isArray(incoming.bio))) {
         alert("Arquivo inválido. Selecione um arquivo de dados exportado por este app.");
         input.value = "";
         return;
       }
+      if (!Array.isArray(incoming.checkins)) incoming.checkins = [];
+      if (!Array.isArray(incoming.bio)) incoming.bio = [];
       input.value = "";
       openImportChoiceModal(incoming);
     };
@@ -1294,27 +808,23 @@
   }
 
   function importModalKeyHandler(e) { if (e.key === "Escape") closeImportChoiceModal(); }
-
   function closeImportChoiceModal() {
     const el = document.getElementById("importModalBackdrop");
     if (el) el.remove();
     document.removeEventListener("keydown", importModalKeyHandler);
   }
-
   function openImportChoiceModal(incoming) {
     closeImportChoiceModal();
-    const exCount = incoming.exercises.length;
-    const bioCount = Array.isArray(incoming.bio) ? incoming.bio.length : 0;
     const el = document.createElement("div");
     el.className = "modal-backdrop";
     el.id = "importModalBackdrop";
     el.innerHTML = `
       <div class="modal-card">
         <h3>Como importar este arquivo?</h3>
-        <p class="hint">O arquivo tem ${exCount} exercícios e ${bioCount} registros de bioimpedância.</p>
+        <p class="hint">O arquivo tem ${incoming.checkins.length} treinos registrados e ${incoming.bio.length} registros de bioimpedância.</p>
         <div class="modal-actions">
           <button class="btn-small primary" id="importMergeBtn">Mesclar dados (recomendado)</button>
-          <p class="hint">Mantém o histórico de cargas e bioimpedância já salvos neste aparelho, e atualiza/acrescenta treinos e exercícios do arquivo.</p>
+          <p class="hint">Mantém o que já está salvo neste aparelho e acrescenta/atualiza com o que está no arquivo.</p>
           <button class="btn-small" id="importReplaceBtn">Substituir tudo</button>
           <p class="hint">Apaga tudo que está salvo neste aparelho e usa só o que está no arquivo. Essa ação não pode ser desfeita.</p>
           <button class="link-btn" id="importCancelBtn">Cancelar</button>
@@ -1323,376 +833,39 @@
     `;
     document.body.appendChild(el);
     el.addEventListener("click", (e) => { if (e.target === el) closeImportChoiceModal(); });
-    document.getElementById("importMergeBtn").addEventListener("click", () => {
-      closeImportChoiceModal();
-      applyImportedStore(incoming, "merge");
-    });
+    document.getElementById("importMergeBtn").addEventListener("click", () => { closeImportChoiceModal(); applyImportedStore(incoming, "merge"); });
     document.getElementById("importReplaceBtn").addEventListener("click", () => {
       closeImportChoiceModal();
-      const ok = confirm("Substituir tudo vai apagar TODOS os treinos, exercícios e histórico salvos neste aparelho, usando só o que está no arquivo importado. Essa ação não pode ser desfeita. Deseja continuar?");
+      const ok = confirm("Substituir tudo vai apagar TODOS os treinos e bioimpedância salvos neste aparelho, usando só o que está no arquivo importado. Essa ação não pode ser desfeita. Deseja continuar?");
       if (ok) applyImportedStore(incoming, "replace");
     });
     document.getElementById("importCancelBtn").addEventListener("click", closeImportChoiceModal);
     document.addEventListener("keydown", importModalKeyHandler);
   }
 
-  function mergeHistory(localHist, incomingHist) {
+  function mergeByDate(local, incoming) {
     const map = new Map();
-    (Array.isArray(localHist) ? localHist : []).forEach(h => { if (h && h.date) map.set(h.date, h); });
-    (Array.isArray(incomingHist) ? incomingHist : []).forEach(h => { if (h && h.date) map.set(h.date, h); });
-    return Array.from(map.values()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  }
-
-  function mergeStores(localStore, incoming) {
-    const localById = {};
-    (localStore.exercises || []).forEach(ex => { localById[ex.id] = ex; });
-
-    const mergedExercises = [];
-    const seenIds = new Set();
-
-    incoming.exercises.forEach(inEx => {
-      const localEx = localById[inEx.id];
-      const merged = Object.assign({}, inEx);
-      const mergedHist = mergeHistory(localEx && localEx.history, inEx.history);
-      merged.history = mergedHist;
-      if (mergedHist.length) merged.weight = mergedHist[mergedHist.length - 1].weight;
-      else if (localEx && localEx.weight != null) merged.weight = localEx.weight;
-      mergedExercises.push(merged);
-      seenIds.add(inEx.id);
-    });
-    // Exercícios que só existem neste aparelho (ex: criados direto no celular) são mantidos.
-    (localStore.exercises || []).forEach(localEx => {
-      if (!seenIds.has(localEx.id)) mergedExercises.push(localEx);
-    });
-
-    const bioMap = new Map();
-    (localStore.bio || []).forEach(b => { if (b && b.date) bioMap.set(b.date, b); });
-    (incoming.bio || []).forEach(b => { if (b && b.date) bioMap.set(b.date, b); });
-    const mergedBio = Array.from(bioMap.values()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-
-    // Semana: dia a dia. Um dia com null/undefined no arquivo mantém o que já estava
-    // neste aparelho; só os dias presentes no arquivo são substituídos.
-    const mergedWeek = (localStore.week || []).map((localDay, i) => {
-      const incomingDay = Array.isArray(incoming.week) ? incoming.week[i] : undefined;
-      return (incomingDay === undefined || incomingDay === null) ? localDay : incomingDay;
-    });
-
-    return {
-      exercises: mergedExercises,
-      week: mergedWeek,
-      bio: mergedBio,
-    };
+    (Array.isArray(local) ? local : []).forEach(x => { if (x && x.date) map.set(x.date, x); });
+    (Array.isArray(incoming) ? incoming : []).forEach(x => { if (x && x.date) map.set(x.date, x); });
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
   }
 
   function applyImportedStore(incoming, mode) {
-    const result = mode === "merge" ? mergeStores(store, incoming) : {
-      exercises: incoming.exercises,
-      week: incoming.week,
-      bio: Array.isArray(incoming.bio) ? incoming.bio : [],
-    };
-    store.exercises = result.exercises;
-    store.week = normalizeWeek(result.week);
-    store.bio = result.bio;
+    if (mode === "merge") {
+      store.checkins = mergeByDate(store.checkins, incoming.checkins);
+      store.bio = mergeByDate(store.bio, incoming.bio);
+    } else {
+      store.checkins = Array.isArray(incoming.checkins) ? incoming.checkins.slice() : [];
+      store.bio = Array.isArray(incoming.bio) ? incoming.bio.slice() : [];
+    }
     saveStore();
     alert(mode === "merge" ? "Dados mesclados com sucesso!" : "Dados importados com sucesso!");
-    closeEdit();
+    section = "treino";
+    document.getElementById("bioToggle").classList.remove("active");
+    renderWorkout();
   }
 
-  // ----- Treino do dia -----
-
-  function dayEditorHTML() {
-    const day = store.week[editingDayIndex];
-    const meta = DOW_META[editingDayIndex];
-    const exs = exercisesForDay(editingDayIndex);
-    const available = store.exercises.filter(e => !day.exerciseIds.includes(e.id));
-
-    const assignedRows = exs.map((ex, i) => `
-      <div class="assigned-row">
-        <div class="thumb-sm">${mediaSmallHTML(ex)}</div>
-        <div>
-          <div class="ex-name">${escapeHtml(ex.name)}</div>
-          <div class="ex-sub">${escapeHtml(ex.group)} · ${ex.sets}× ${escapeHtml(ex.reps)}${!isCardio(ex) ? ` · ${ex.weight}kg` : ""}</div>
-        </div>
-        <div class="row-actions">
-          <button type="button" onclick="moveDayExercise(${i}, -1)" ${i === 0 ? "disabled" : ""} title="Subir">↑</button>
-          <button type="button" onclick="moveDayExercise(${i}, 1)" ${i === exs.length - 1 ? "disabled" : ""} title="Descer">↓</button>
-          <button type="button" class="remove" onclick="removeDayExercise(${i})" title="Remover do dia">×</button>
-        </div>
-      </div>
-    `).join("");
-
-    const options = available.map(e => `<option value="${e.id}">${escapeHtml(e.name)} (${escapeHtml(e.group)})</option>`).join("");
-
-    return `
-      <div class="day-config">
-        <div class="form-grid">
-          <div class="form-row">
-            <label>Tipo do dia</label>
-            <select onchange="updateDayField('kind', this.value)">
-              <option value="forca" ${day.kind === "forca" ? "selected" : ""}>Musculação</option>
-              <option value="cardio" ${day.kind === "cardio" ? "selected" : ""}>Aeróbico</option>
-              <option value="descanso" ${day.kind === "descanso" ? "selected" : ""}>Descanso</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label>Nome do treino (${meta.full})</label>
-            <input type="text" value="${escapeAttr(day.focus)}" oninput="updateDayField('focus', this.value)" placeholder="ex: Peito e Tríceps">
-          </div>
-        </div>
-      </div>
-      ${day.kind === "descanso" ? `
-        <div class="rest-card"><div class="display">Dia de descanso</div>Sem exercícios pra configurar.</div>
-      ` : `
-        <div class="section-label">Exercícios do dia (${exs.length})</div>
-        ${exs.length ? `<div class="assigned-list">${assignedRows}</div>` : `<p class="hint" style="margin-bottom:14px">Nenhum exercício ainda — adicione da biblioteca abaixo.</p>`}
-        <div class="add-row">
-          ${available.length
-            ? `<select id="addExSelect">${options}</select><button type="button" class="btn-small primary" onclick="addExistingToDay()">+ Adicionar</button>`
-            : `<p class="hint">Todos os exercícios da biblioteca já estão neste dia.</p>`
-          }
-        </div>
-        <p class="hint" style="margin-top:10px">Não achou o exercício? <button type="button" class="link-btn" onclick="newExerciseForDay()">Criar um novo</button> e ele já entra direto neste dia.</p>
-      `}
-    `;
-  }
-
-  function updateDayField(field, value) {
-    store.week[editingDayIndex][field] = value;
-    saveStore();
-    if (field === "kind") { renderRail(); renderEditBody(); }
-  }
-  function moveDayExercise(i, delta) {
-    const ids = store.week[editingDayIndex].exerciseIds;
-    const j = i + delta;
-    if (j < 0 || j >= ids.length) return;
-    [ids[i], ids[j]] = [ids[j], ids[i]];
-    saveStore();
-    renderEditBody();
-  }
-  function removeDayExercise(i) {
-    store.week[editingDayIndex].exerciseIds.splice(i, 1);
-    saveStore();
-    renderEditBody();
-  }
-  function addExistingToDay() {
-    const sel = document.getElementById("addExSelect");
-    if (!sel || !sel.value) return;
-    store.week[editingDayIndex].exerciseIds.push(sel.value);
-    saveStore();
-    renderEditBody();
-  }
-  function newExerciseForDay() {
-    formAssignDay = editingDayIndex;
-    editTab = "library";
-    openExerciseForm("new", null);
-  }
-
-  // ----- Biblioteca -----
-
-  function libraryHTML() {
-    const rows = store.exercises.map(ex => {
-      if (confirmDeleteId === ex.id) {
-        return `
-          <div class="lib-row">
-            <div class="thumb-sm">${mediaSmallHTML(ex)}</div>
-            <div><div class="ex-name">${escapeHtml(ex.name)}</div></div>
-            <div class="confirm-row">
-              <span>Excluir?</span>
-              <button type="button" class="btn-small" style="border-color:var(--danger);color:var(--danger-ink);background:var(--danger)" onclick="deleteExercise('${ex.id}')">Sim</button>
-              <button type="button" class="btn-small" onclick="confirmDeleteId=null; renderEditBody();">Não</button>
-            </div>
-          </div>
-        `;
-      }
-      return `
-        <div class="lib-row">
-          <div class="thumb-sm">${mediaSmallHTML(ex)}</div>
-          <div>
-            <div class="ex-name">${escapeHtml(ex.name)}</div>
-            <div class="lib-group-tag">${escapeHtml(ex.group)} · ${ex.sets}× ${escapeHtml(ex.reps)}${!isCardio(ex) ? ` · ${ex.weight}kg` : ""}</div>
-          </div>
-          <div class="row-actions">
-            ${!isCardio(ex) ? `<button type="button" onclick="openHistory('${ex.id}')" title="Ver progressão">📈</button>` : ""}
-            <button type="button" onclick="openExerciseForm('edit', '${ex.id}')" title="Editar">✎</button>
-            <button type="button" class="remove" onclick="confirmDeleteId='${ex.id}'; renderEditBody();" title="Excluir">×</button>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    return `
-      ${showExerciseForm ? exerciseFormHTML() : `<button type="button" class="btn-small primary" onclick="openExerciseForm('new', null)">+ Novo exercício</button>`}
-      <div class="lib-list">${rows || '<p class="hint">Nenhum exercício cadastrado ainda.</p>'}</div>
-    `;
-  }
-
-  function openExerciseForm(mode_, id) {
-    formMode = mode_;
-    if (mode_ === "edit") {
-      const ex = getEx(id);
-      const mediaSource = ex.media ? (ex.media.startsWith("data:") ? "file" : "url") : "none";
-      formData = {
-        id: ex.id, name: ex.name, group: ex.group, sets: ex.sets, reps: ex.reps, weight: ex.weight, rest: ex.rest,
-        media: ex.media, mediaType: ex.mediaType, mediaSource, fileName: mediaSource === "file" ? "(arquivo salvo)" : "",
-      };
-    } else {
-      formData = { id: null, name: "", group: "Peito", sets: 3, reps: "10–12", weight: 10, rest: REST_DURATION, media: "", mediaType: "image", mediaSource: "none", fileName: "" };
-    }
-    showExerciseForm = true;
-    confirmDeleteId = null;
-    formError = null;
-    renderEditBody();
-  }
-  function cancelExerciseForm() {
-    showExerciseForm = false;
-    formAssignDay = null;
-    formError = null;
-    renderEditBody();
-  }
-
-  function exerciseFormHTML() {
-    const cardio = formData.group === "Cardio";
-    return `
-      <div class="ex-form">
-        <h3>${formMode === "new" ? "Novo exercício" : "Editar exercício"}</h3>
-        ${formError ? `<p class="hint" style="color:var(--danger)">${escapeHtml(formError)}</p>` : ""}
-        <div class="form-grid">
-          <div class="form-row" style="grid-column: 1 / -1">
-            <label>Nome</label>
-            <input type="text" id="f-name" value="${escapeAttr(formData.name)}" oninput="formData.name=this.value" placeholder="ex: Supino reto com barra">
-          </div>
-          <div class="form-row">
-            <label>Grupo muscular</label>
-            <select onchange="formField('group', this.value)">
-              ${GROUPS.map(g => `<option value="${g}" ${formData.group === g ? "selected" : ""}>${g}</option>`).join("")}
-            </select>
-          </div>
-          <div class="form-row">
-            <label>Séries</label>
-            <input type="number" min="1" value="${formData.sets}" oninput="formData.sets=parseInt(this.value)||1">
-          </div>
-          <div class="form-row">
-            <label>${cardio ? "Duração" : "Repetições"}</label>
-            <input type="text" id="f-reps" value="${escapeAttr(formData.reps)}" oninput="formData.reps=this.value" placeholder="${cardio ? "ex: 30 min" : "ex: 8–10"}">
-          </div>
-          ${!cardio ? `
-            <div class="form-row">
-              <label>Peso inicial (kg)</label>
-              <input type="number" step="0.5" min="0" value="${formData.weight ?? 0}" oninput="formData.weight=parseFloat(this.value)||0">
-            </div>
-            <div class="form-row">
-              <label>Descanso entre séries (s)</label>
-              <input type="number" min="10" step="5" value="${formData.rest || REST_DURATION}" oninput="formData.rest=parseInt(this.value)||${REST_DURATION}">
-            </div>
-          ` : ""}
-          <div class="form-row" style="grid-column: 1 / -1">
-            <label>URL do gif ou vídeo de execução (opcional)</label>
-            <input type="url" value="${escapeAttr(formData.mediaSource === "url" ? (formData.media || "") : "")}" ${formData.mediaSource === "file" ? "disabled placeholder=\"arquivo enviado abaixo\"" : ""} oninput="formField('mediaUrl', this.value)" placeholder="https://...">
-            <p class="hint">Cole o link de um gif, imagem ou vídeo (.mp4/.webm), ou envie um arquivo abaixo.</p>
-          </div>
-          <div class="form-row" style="grid-column: 1 / -1">
-            <label>Ou envie um arquivo (gif, imagem ou vídeo curto)</label>
-            <input type="file" accept="image/*,video/*" onchange="handleMediaFile(this)">
-            ${formData.mediaSource === "file"
-              ? `<p class="hint">Arquivo enviado: ${escapeHtml(formData.fileName)} — <button type="button" class="link-btn" onclick="clearMediaFile()">remover</button></p>`
-              : `<p class="hint">Até 8MB. Fica salvo neste navegador junto com o exercício.</p>`
-            }
-          </div>
-        </div>
-        <div class="media-preview">
-          ${formData.media
-            ? (formData.mediaType === "video"
-                ? `<video src="${escapeAttr(formData.media)}" muted loop autoplay playsinline></video>`
-                : `<img src="${escapeAttr(formData.media)}" alt="">`)
-            : "Pré-visualização do gif/vídeo"
-          }
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn-small" onclick="cancelExerciseForm()">Cancelar</button>
-          <button type="button" class="btn-small primary" onclick="saveExerciseForm()">Salvar exercício</button>
-        </div>
-      </div>
-    `;
-  }
-
-  function formField(field, value) {
-    if (field === "mediaUrl") {
-      formData.media = value;
-      formData.mediaType = /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(value) ? "video" : "image";
-      formData.mediaSource = value ? "url" : "none";
-    } else {
-      formData[field] = value;
-      if (field === "group" && value === "Cardio") { formData.weight = null; }
-      if (field === "group" && value !== "Cardio" && formData.weight == null) { formData.weight = 10; }
-    }
-    renderEditBody();
-  }
-
-  function handleMediaFile(input) {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      formError = "Arquivo muito grande (máx. 8MB). Tente um vídeo mais curto ou comprimido.";
-      renderEditBody();
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      formData.media = reader.result;
-      formData.mediaType = file.type.startsWith("video") ? "video" : "image";
-      formData.mediaSource = "file";
-      formData.fileName = file.name;
-      formError = null;
-      renderEditBody();
-    };
-    reader.onerror = () => { formError = "Não consegui ler esse arquivo. Tente outro."; renderEditBody(); };
-    reader.readAsDataURL(file);
-  }
-  function clearMediaFile() {
-    formData.media = "";
-    formData.mediaType = "image";
-    formData.mediaSource = "none";
-    formData.fileName = "";
-    renderEditBody();
-  }
-
-  function saveExerciseForm() {
-    if (!formData.name.trim()) { formError = "Dê um nome pro exercício antes de salvar."; renderEditBody(); return; }
-    formError = null;
-    if (formData.group === "Cardio") formData.weight = null;
-    if (formMode === "new") {
-      const ex = {
-        id: newId(), name: formData.name.trim(), group: formData.group, sets: formData.sets || 1,
-        reps: formData.reps || "", weight: formData.group === "Cardio" ? null : (formData.weight ?? 10),
-        rest: formData.group === "Cardio" ? null : (formData.rest || REST_DURATION),
-        media: formData.media || "", mediaType: formData.mediaType || "image", history: [],
-      };
-      store.exercises.push(ex);
-      if (formAssignDay != null) { store.week[formAssignDay].exerciseIds.push(ex.id); }
-    } else {
-      const ex = getEx(formData.id);
-      Object.assign(ex, {
-        name: formData.name.trim(), group: formData.group, sets: formData.sets || 1, reps: formData.reps || "",
-        weight: formData.group === "Cardio" ? null : (formData.weight ?? 10),
-        rest: formData.group === "Cardio" ? null : (formData.rest || REST_DURATION),
-        media: formData.media || "", mediaType: formData.mediaType || "image",
-      });
-    }
-    saveStore();
-    showExerciseForm = false;
-    if (formAssignDay != null) { editingDayIndex = formAssignDay; editTab = "day"; formAssignDay = null; renderRail(); }
-    renderEditBody();
-  }
-
-  function deleteExercise(id) {
-    store.exercises = store.exercises.filter(e => e.id !== id);
-    store.week.forEach(d => { d.exerciseIds = d.exerciseIds.filter(eid => eid !== id); });
-    confirmDeleteId = null;
-    saveStore();
-    renderEditBody();
-  }
-
-  renderRail();
+  // ---------- Início ----------
   renderWorkout();
 </script>
 
